@@ -21,9 +21,7 @@ import rospy
 import rospkg
 
 from qt_gui.plugin import Plugin
-from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget
-
+from .pattern_manager_widget import PatternManagerWidget
 
 class PatternManagerPlugin(Plugin):
     def __init__(self, context):
@@ -39,12 +37,7 @@ class PatternManagerPlugin(Plugin):
             print 'arguments: ', args
             print 'unknowns: ', unknowns
 
-        self._widget = QWidget()
-
-        ui_file = os.path.join(rospkg.RosPack().get_path('rqt_pattern_manager'), 'resource', 'PatternManagerPlugin.ui')
-        loadUi(ui_file, self._widget)
-
-        self._widget.setObjectName('PatternManagerPluginUi')
+        self._widget = PatternManagerWidget()
 
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
