@@ -1,5 +1,5 @@
 <library path="src">
-  <class name="Pattern Manager Plugin" type="rqt_pattern_manager.pattern_manager.PatternManagerPlugin" base_class_type="rqt_gui_py::Plugin">
+  <class name="Pattern Manager Plugin" type="rqt_pattern_manager.pattern_manager_plugin.PatternManagerPlugin" base_class_type="rqt_gui_py::Plugin">
     <description>
       User interface for Pattern Manager.
     </description>

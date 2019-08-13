@@ -4,6 +4,6 @@ import sys
 
 from rqt_gui.main import Main
 
-plugin = 'rqt_pattern_manager.pattern_manager.PatternManagerPlugin'
+plugin = 'rqt_pattern_manager.pattern_manager_plugin.PatternManagerPlugin'
 main = Main(filename=plugin)
 sys.exit(main.main(standalone=plugin))

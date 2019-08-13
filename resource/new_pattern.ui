@@ -36,12 +36,12 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>51</width>
+     <width>91</width>
      <height>17</height>
     </rect>
    </property>
    <property name="text">
-    <string>Name:</string>
+    <string>Pattern:</string>
    </property>
   </widget>
   <widget class="QDialogButtonBox" name="dialogButton">
@@ -60,7 +60,7 @@
     <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
    </property>
   </widget>
-  <widget class="QListView" name="listView">
+  <widget class="QListView" name="patternView">
    <property name="geometry">
     <rect>
      <x>20</x>
@@ -68,6 +68,12 @@
      <width>256</width>
      <height>131</height>
     </rect>
+   </property>
+   <property name="accessibleName">
+    <string>patternView</string>
+   </property>
+   <property name="editTriggers">
+    <set>QAbstractItemView::NoEditTriggers</set>
    </property>
   </widget>
  </widget>
