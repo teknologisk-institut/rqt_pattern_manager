@@ -22,17 +22,36 @@ import rospy
 import rospkg
 
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget
+from python_qt_binding.QtWidgets import QWidget, QDockWidget, QFrame, QPushButton
 
 
 class PatternManagerWidget(QWidget):
     def __init__(self):
         super(PatternManagerWidget, self).__init__()
         
-        rp = rospkg.RosPack()
-        ui_file = os.path.join(rp.get_path('rqt_pattern_manager'), 'resource', 'pattern_manager_widget.ui')
-        loadUi(ui_file, self)
-
+        self.load_ui('pattern_manager_widget.ui', self)
         self.setObjectName('PatternManagerWidget')
 
-        
+        self.w_new_grp = QWidget()
+        self.w_new_pat = QWidget()
+
+        self.load_ui("new_group.ui", self.w_new_grp)
+        self.load_ui("new_pattern.ui", self.w_new_pat)
+
+        btn_new_grp = self.newGroupButton
+        btn_new_pat = self.newPatternButton
+
+        btn_new_grp.clicked.connect(self.w_new_grp.show)
+        btn_new_pat.clicked.connect(self.w_new_pat.show)
+
+        self.w_new_grp.dialogButton.accepted.connect(self.w_new_grp.close)
+        self.w_new_grp.dialogButton.rejected.connect(self.w_new_grp.close)
+
+        self.w_new_pat.dialogButton.accepted.connect(self.w_new_pat.close)
+        self.w_new_pat.dialogButton.rejected.connect(self.w_new_pat.close)
+
+
+    def load_ui(self, file, widget):
+        rp = rospkg.RosPack()
+        ui_file = os.path.join(rp.get_path('rqt_pattern_manager'), 'resource', file)
+        loadUi(ui_file, widget)

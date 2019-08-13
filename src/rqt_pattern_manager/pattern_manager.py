@@ -23,6 +23,7 @@ import rospkg
 from qt_gui.plugin import Plugin
 from .pattern_manager_widget import PatternManagerWidget
 
+
 class PatternManagerPlugin(Plugin):
     def __init__(self, context):
         super(PatternManagerPlugin, self).__init__(context)
@@ -37,7 +38,7 @@ class PatternManagerPlugin(Plugin):
             print 'arguments: ', args
             print 'unknowns: ', unknowns
 
-        self._widget = PatternManagerWidget()
+        self._widget = PatternManagerWidget()        
 
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
