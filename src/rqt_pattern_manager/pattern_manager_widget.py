@@ -37,17 +37,11 @@ class NewGroupWidget(QWidget):
         Utils.load_ui('new_group.ui', self)
         self.setObjectName('NewGroupWidget')
 
-        self.selected_gtype = self.groupBox.currentText()
-        self.groupBox.activated.connect(self._on_group_box_activated)
-
         self.dialogButton.accepted.connect(self._on_accepted)
         self.dialogButton.rejected.connect(self.close)
 
-    def _on_group_box_activated(self):
-        self.selected_gtype = self.groupBox.currentText()
-
     def _on_accepted(self):
-        self.pmc.create_group(self.selected_gtype, self.nameBox.text())
+        self.pmc.create_group(self.groupBox.currentText(), self.nameBox.text())
         self.close()
 
 
@@ -60,6 +54,12 @@ class NewPatternWidget(QWidget):
         Utils.load_ui('new_pattern.ui', self)
         self.setObjectName('NewPatternWidget')
 
+        self._populate_pattern_view()
+
+        self.dialogButton.accepted.connect(self._on_accepted)
+        self.dialogButton.rejected.connect(self.close)
+
+    def _populate_pattern_view(self):
         model = QStandardItemModel(self.patternView)
 
         pats = self.pmc._get_pattern_types()
@@ -69,8 +69,9 @@ class NewPatternWidget(QWidget):
 
         self.patternView.setModel(model)
 
-        self.dialogButton.accepted.connect(self.close)
-        self.dialogButton.rejected.connect(self.close)
+    def _on_accepted(self):
+        self.pmc.create_pattern(self.patternView.currentItem(), self.nameBox.text(), self.groupView.currentItem())
+        self.close()
 
 
 class PatternManagerWidget(QWidget):
@@ -82,11 +83,26 @@ class PatternManagerWidget(QWidget):
         Utils.load_ui('pattern_manager_widget.ui', self)
         self.setObjectName('PatternManagerWidget')
 
+        self._populate_tree_view()
+
         btn_new_grp = self.newGroupButton
         btn_new_pat = self.newPatternButton
+        btn_update = self.updateButton
 
         self.wdg_new_grp = NewGroupWidget(self.pmc)
         self.wdg_new_pat = NewPatternWidget(self.pmc)
 
         btn_new_grp.clicked.connect(self.wdg_new_grp.show)
         btn_new_pat.clicked.connect(self.wdg_new_pat.show)
+        btn_update.clicked.connect(self._populate_tree_view)
+
+    def _populate_tree_view(self):
+        grp_ids, grp_nms = self.pmc.get_groups()
+
+        model = QStandardItemModel(self.treeView)
+
+        for n in grp_nms:
+            item = QStandardItem(n)
+            model.appendRow(item)
+
+        self.treeView.setModel(model)
