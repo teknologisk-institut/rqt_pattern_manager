@@ -22,8 +22,9 @@ import rospy
 import rospkg
 
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget, QDockWidget, QFrame, QPushButton,QComboBox
-from python_qt_binding.QtGui import QStandardItem, QStandardItemModel
+from PyQt5.QtWidgets import QWidget, QDockWidget, QFrame, QPushButton, QComboBox, QTreeView
+from PyQt5.QtGui import QStandardItem, QStandardItemModel
+from PyQt5.QtCore import QAbstractItemModel, QModelIndex
 from .utils import Utils
 from .pattern_manager_client import PatternManagerClient
 
@@ -85,7 +86,7 @@ class PatternManagerWidget(QWidget):
 
         self._populate_tree_view()
 
-        btn_new_grp = self.newGroupButton
+        btn_new_grp = self.newGroupButton       # type : QPushButton
         btn_new_pat = self.newPatternButton
         btn_update = self.updateButton
 
@@ -99,10 +100,17 @@ class PatternManagerWidget(QWidget):
     def _populate_tree_view(self):
         grp_ids, grp_nms = self.pmc.get_groups()
 
-        model = QStandardItemModel(self.treeView)
+        model = QStandardItemModel(5, 1)
 
-        for n in grp_nms:
-            item = QStandardItem(n)
-            model.appendRow(item)
+        for i in range(0, 5):
+            for j in range(0, 1):
+                item = QStandardItem("row: {}, col: {}".format(i, j))
+
+                if j == 0:
+                    for k in range(0, 3):
+                        child = QStandardItem("item: {}".format(k))
+                        item.appendRow(child)
+
+                    model.setItem(i, j, item)
 
         self.treeView.setModel(model)
