@@ -27,6 +27,8 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtCore import QAbstractItemModel, QModelIndex
 from .utils import Utils
 from .pattern_manager_client import PatternManagerClient
+import pattern_manager.msg as pm_msg
+import types
 
 
 class NewGroupWidget(QWidget):
@@ -98,19 +100,32 @@ class PatternManagerWidget(QWidget):
         btn_update.clicked.connect(self._populate_tree_view)
 
     def _populate_tree_view(self):
-        grp_ids, grp_nms = self.pmc.get_groups()
+        grp_deps = self.pmc.get_groups()
 
-        model = QStandardItemModel(5, 1)
+        # create nodes dictionary
+        nodes = {}
+        for i in grp_deps:
+            name, par_name = i.name_and_parent
+            nodes[name] = {}
 
-        for i in range(0, 5):
-            for j in range(0, 1):
-                item = QStandardItem("row: {}, col: {}".format(i, j))
+        # create tree of parent-child relations
+        tree = {}
+        for i in grp_deps:
+            name, par_name = i.name_and_parent
+            node = nodes[name]
 
-                if j == 0:
-                    for k in range(0, 3):
-                        child = QStandardItem("item: {}".format(k))
-                        item.appendRow(child)
+            if name == par_name:
+                tree[name] = node
+            else:
+                parent = nodes[par_name]
+                parent[name] = node
 
-                    model.setItem(i, j, item)
-
+        model = QStandardItemModel()
         self.treeView.setModel(model)
+        self._populate_model(tree, model.invisibleRootItem())
+
+    def _populate_model(self, children, parent):
+        for child in sorted(children):
+            child_item = QStandardItem(child)
+            parent.appendRow(child_item)
+            self._populate_model(children[child], child_item)

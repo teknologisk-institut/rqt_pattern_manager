@@ -38,10 +38,10 @@ class PatternManagerClient():
     def get_groups(self):
         rospy.wait_for_service('pattern_manager/get_groups')
         try:
-            get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GetGroups)
+            get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GroupTree)
             resp = get_grps()
 
-            return (resp.group_ids, resp.group_names)
+            return resp.group_deps
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
