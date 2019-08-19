@@ -29,3 +29,19 @@ class Utils():
         rp = rospkg.RosPack()
         ui_file = os.path.join(rp.get_path('rqt_pattern_manager'), 'resource', file)
         loadUi(ui_file, widget)
+
+    @staticmethod
+    def deps_tree_from_nested_lists(lst, nodes):
+        tree = {}
+        for i in lst:
+            name, par_name = i.name_and_parent
+            type = i.type
+            node = nodes[name]
+
+            if name == par_name:
+                tree[name] = node
+            else:
+                parent = nodes[par_name]
+                parent[name] = node
+
+        return tree

@@ -35,6 +35,16 @@ class PatternManagerClient():
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
+    def get_patterns(self):
+        rospy.wait_for_service('pattern_manager/get_patterns')
+        try:
+            get_pats = rospy.ServiceProxy('pattern_manager/get_patterns', pm_srv.GroupTree)
+            resp = get_pats()
+
+            return resp.group_deps
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
+
     def get_groups(self):
         rospy.wait_for_service('pattern_manager/get_groups')
         try:
