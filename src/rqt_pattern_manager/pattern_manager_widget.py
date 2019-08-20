@@ -187,3 +187,4 @@ class PatternManagerWidget(QWidget):
 
         self.wdg.show()
         self.wdg.destroyed.connect(self.tree_model.update_model)
+
