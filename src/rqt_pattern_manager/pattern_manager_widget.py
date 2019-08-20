@@ -168,20 +168,22 @@ class PatternManagerWidget(QWidget):
 
     def _show_context_menu(self, position):
         menu = QMenu()
-        a_new_pat = menu.addAction("Add Pattern..")
-        a_new_grp = menu.addAction("Add Group..")
+        ac_new_pat = menu.addAction("Add Pattern..")
+        ac_new_grp = menu.addAction("Add Group..")
 
         if not self._get_cur_selection(self.treeView).whatsThis() == 'Group':
-            a_new_pat.setEnabled(False)
-            a_new_grp.setEnabled(False)
+            ac_new_pat.setEnabled(False)
+            ac_new_grp.setEnabled(False)
 
         action = menu.exec_(self.treeView.mapToGlobal(position))
 
-        if action == a_new_pat:
-            self.wdg_new_pat = NewPatternWidget()
-            self.wdg_new_pat.show()
-            self.wdg_new_pat.destroyed.connect(self.tree_model.update_model)
-        elif action == a_new_grp:
-            self.wdg_new_grp = NewGroupWidget()
-            self.wdg_new_grp.show()
-            self.wdg_new_grp.destroyed.connect(self.tree_model.update_model)
+        self.wdg = None
+        if action == ac_new_pat:
+            self.wdg = NewPatternWidget()
+        elif action == ac_new_grp:
+            self.wdg = NewGroupWidget()
+        else:
+            return
+
+        self.wdg.show()
+        self.wdg.destroyed.connect(self.tree_model.update_model)
