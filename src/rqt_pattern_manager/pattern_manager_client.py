@@ -24,8 +24,9 @@ import pattern_manager.srv as pm_srv
 class PatternManagerClient():
     def __init__(self):
         pass
-    
-    def _get_pattern_types(self):
+
+    @staticmethod
+    def get_pattern_types():
         rospy.wait_for_service('pattern_manager/get_pattern_types')
         try:
             get_pat_typs = rospy.ServiceProxy('pattern_manager/get_pattern_types', pm_srv.PatternTypes)
@@ -35,7 +36,8 @@ class PatternManagerClient():
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
-    def get_patterns(self):
+    @staticmethod
+    def get_patterns():
         rospy.wait_for_service('pattern_manager/get_patterns')
         try:
             get_pats = rospy.ServiceProxy('pattern_manager/get_patterns', pm_srv.GroupTree)
@@ -45,7 +47,8 @@ class PatternManagerClient():
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
-    def get_groups(self):
+    @staticmethod
+    def get_groups():
         rospy.wait_for_service('pattern_manager/get_groups')
         try:
             get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GroupTree)
@@ -55,7 +58,8 @@ class PatternManagerClient():
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
-    def create_pattern(self, pat_type, pat_name, gop_id):
+    @staticmethod
+    def create_pattern(pat_type, pat_name, gop_id):
         rospy.wait_for_service('pattern_manager/create_pattern')
         try:
             crt_pat = rospy.ServiceProxy('pattern_manager/create_pattern', pm_srv.CreatePattern)
@@ -65,7 +69,8 @@ class PatternManagerClient():
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
-    def create_group(self, g_type, name):
+    @staticmethod
+    def create_group(g_type, name):
         rospy.wait_for_service('pattern_manager/create_group')
         try:
             crt_grp = rospy.ServiceProxy('pattern_manager/create_group', pm_srv.CreateGroup)
@@ -78,4 +83,4 @@ class PatternManagerClient():
 
 if __name__ == '__main__':
     pmc = PatternManagerClient()
-    print pmc._get_pattern_types()
+    print pmc.get_pattern_types()

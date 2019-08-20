@@ -16,56 +16,51 @@
 
 # Author: Mads Vainoe Baatrup
 
-import os
-
-import rospy
-import rospkg
-
-from python_qt_binding import loadUi
 from PyQt5.QtWidgets import QWidget, QDockWidget, QFrame, QPushButton, QComboBox, QTreeView, QMenu, qApp, QAction
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtCore import QModelIndex, Qt
 from .utils import Utils
-from .pattern_manager_client import PatternManagerClient
-import pattern_manager.msg as pm_msg
-import types
+from .pattern_manager_client import PatternManagerClient as PMC
 
 
 class NewGroupWidget(QWidget):
-    def __init__(self, pmc):
+    def __init__(self):
         super(NewGroupWidget, self).__init__()
-
-        self.pmc = pmc
 
         Utils.load_ui('new_group.ui', self)
         self.setObjectName('NewGroupWidget')
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
 
         self.dialogButton.accepted.connect(self._on_accepted)
-        self.dialogButton.rejected.connect(self.close)
+        self.dialogButton.rejected.connect(self._on_rejected)
 
     def _on_accepted(self):
-        self.pmc.create_group(self.groupBox.currentText(), self.nameBox.text())
+        PMC.create_group(self.groupBox.currentText(), self.nameBox.text())
+        self.close()
+
+    def _on_rejected(self):
+        self.groupBox.clear()
+        self.nameBox.clear()
         self.close()
 
 
 class NewPatternWidget(QWidget):
-    def __init__(self, pmc):
+    def __init__(self):
         super(NewPatternWidget, self).__init__()
-
-        self.pmc = pmc
 
         Utils.load_ui('new_pattern.ui', self)
         self.setObjectName('NewPatternWidget')
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
 
         self._populate_pattern_view()
 
         self.dialogButton.accepted.connect(self._on_accepted)
-        self.dialogButton.rejected.connect(self.close)
+        self.dialogButton.rejected.connect(self._on_rejected)
 
     def _populate_pattern_view(self):
         model = QStandardItemModel(self.patternView)
 
-        pats = self.pmc._get_pattern_types()
+        pats = PMC.get_pattern_types()
         for p in pats:
             item = QStandardItem(p)
             model.appendRow(item)
@@ -73,57 +68,25 @@ class NewPatternWidget(QWidget):
         self.patternView.setModel(model)
 
     def _on_accepted(self):
-        self.pmc.create_pattern(self.patternView.currentItem(), self.nameBox.text(), self.groupView.currentItem())
+        PMC.create_pattern(self.patternView.currentItem(), self.nameBox.text(), self.groupView.currentItem())
+        self.close()
+
+    def _on_rejected(self):
+        self.nameBox.clear()
         self.close()
 
 
-class PatternManagerWidget(QWidget):
+class TreeItemModel(QStandardItemModel):
     def __init__(self):
-        super(PatternManagerWidget, self).__init__()
+        super(TreeItemModel, self).__init__()
 
-        self.pmc = PatternManagerClient()
-        self.wdg_new_grp = NewGroupWidget(self.pmc)
-        self.wdg_new_pat = NewPatternWidget(self.pmc)
+        self.update_model()
 
-        Utils.load_ui('pattern_manager_widget.ui', self)
-        self.setObjectName('PatternManagerWidget')
+    def update_model(self):
+        self.clear()
 
-        self.tree_model = QStandardItemModel()
-        self.treeView.setModel(self.tree_model)
-        self.treeView.setHeaderHidden(True)
-        self._populate_tree_view(self.tree_model)
-        self.treeView.expandAll()
-
-        self.table_model = QStandardItemModel()
-        self.parameterView.setModel(self.table_model)
-        self.parameterView.horizontalHeader().hide()
-
-        selectionModel = self.treeView.selectionModel()
-        selectionModel.selectionChanged.connect(self._populate_parameter_view)
-
-        btn_update = self.updateButton
-        btn_update.clicked.connect(self._on_update_clicked)
-
-        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.treeView.customContextMenuRequested.connect(self.openMenu)
-
-    def openMenu(self, position):
-        menu = QMenu()
-        addPatAction = menu.addAction("Add Pattern..")
-        addGrpAction = menu.addAction("Add Group..")
-
-        action = menu.exec_(self.treeView.mapToGlobal(position))
-
-        if action == addPatAction:
-            wdg_new_pat = NewPatternWidget(self.pmc)
-            wdg_new_pat.show()
-        elif action == addGrpAction:
-            wdg_new_grp = NewGroupWidget(self.pmc)
-            wdg_new_grp.show()
-
-    def _populate_tree_view(self, model):
-        grp_deps = self.pmc.get_groups()
-        pat_deps = self.pmc.get_patterns()
+        grp_deps = PMC.get_groups()
+        pat_deps = PMC.get_patterns()
         deps = grp_deps + pat_deps
 
         nodes = {}
@@ -134,41 +97,91 @@ class PatternManagerWidget(QWidget):
             types[name] = i.type
 
         tree = Utils.deps_tree_from_nested_lists(deps, nodes)
-        self._populate_model(tree, model.invisibleRootItem(), types)
+        self._build_model(tree, self.invisibleRootItem(), types)
 
-    def _populate_model(self, children, parent, types):
+    def _build_model(self, children, parent, typs):
         for child in sorted(children):
             child_item = QStandardItem(child)
-            child_item.setWhatsThis(types[child])
+            child_item.setWhatsThis(typs[child])
             child_item.setEditable(False)
             parent.appendRow(child_item)
-            self._populate_model(children[child], child_item, types)
+            self._build_model(children[child], child_item, typs)
 
-    def _on_update_clicked(self):
-        index = self.treeView.currentIndex()
-        item = self.tree_model.itemFromIndex(index)
 
-        print 'item_name: \'{}\' | type: {}'.format(item.text(), item.whatsThis())
+class TableItemModel(QStandardItemModel):
+    def __init__(self):
+        super(TableItemModel, self).__init__()
 
-    def _populate_parameter_view(self):
-        self.table_model.clear()
+    def update_model(self, cur_selection):
+        self.clear()
 
-        self.table_model.setColumnCount(1)
-        self.table_model.setRowCount(2)
-
-        index = self.treeView.currentIndex()
-        cur_item = self.tree_model.itemFromIndex(index)
+        self.setColumnCount(1)
+        self.setRowCount(2)
 
         type_header = QStandardItem('Type')
-        type = QStandardItem(cur_item.whatsThis())
+        type = QStandardItem(cur_selection.whatsThis())
         type.setEditable(False)
 
-        self.table_model.setVerticalHeaderItem(0, type_header)
-        self.table_model.setItem(0, 0, type)
+        self.setVerticalHeaderItem(0, type_header)
+        self.setItem(0, 0, type)
 
         name_header = QStandardItem('Name')
-        name = QStandardItem(cur_item.text())
+        name = QStandardItem(cur_selection.text())
         name.setEditable(False)
 
-        self.table_model.setVerticalHeaderItem(1, name_header)
-        self.table_model.setItem(1, 0, name)
+        self.setVerticalHeaderItem(1, name_header)
+        self.setItem(1, 0, name)
+
+
+class PatternManagerWidget(QWidget):
+    def __init__(self):
+        super(PatternManagerWidget, self).__init__()
+
+        Utils.load_ui('pattern_manager_widget.ui', self)
+        self.setObjectName('PatternManagerWidget')
+
+        self.tree_model = TreeItemModel()
+        self.treeView.setModel(self.tree_model)
+        self.treeView.setHeaderHidden(True)
+        self.treeView.expandAll()
+
+        self.table_model = TableItemModel()
+        self.parameterView.setModel(self.table_model)
+        self.parameterView.horizontalHeader().hide()
+
+        selection_model = self.treeView.selectionModel()
+
+        def update_model():
+            self.table_model.update_model(self._get_cur_selection(self.treeView))
+
+        selection_model.selectionChanged.connect(update_model)
+
+        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.treeView.customContextMenuRequested.connect(self._show_context_menu)
+
+    def _get_cur_selection(self, view):
+        selection_model = view.selectionModel()
+        index = selection_model.currentIndex()
+        cur_selection = selection_model.model().itemFromIndex(index)
+
+        return cur_selection
+
+    def _show_context_menu(self, position):
+        menu = QMenu()
+        a_new_pat = menu.addAction("Add Pattern..")
+        a_new_grp = menu.addAction("Add Group..")
+
+        if not self._get_cur_selection(self.treeView).whatsThis() == 'Group':
+            a_new_pat.setEnabled(False)
+            a_new_grp.setEnabled(False)
+
+        action = menu.exec_(self.treeView.mapToGlobal(position))
+
+        if action == a_new_pat:
+            self.wdg_new_pat = NewPatternWidget()
+            self.wdg_new_pat.show()
+            self.wdg_new_pat.destroyed.connect(self.tree_model.update_model)
+        elif action == a_new_grp:
+            self.wdg_new_grp = NewGroupWidget()
+            self.wdg_new_grp.show()
+            self.wdg_new_grp.destroyed.connect(self.tree_model.update_model)
