@@ -68,7 +68,8 @@ class NewPatternWidget(QWidget):
         self.patternView.setModel(model)
 
     def _on_accepted(self):
-        PMC.create_pattern(self.patternView.currentItem(), self.nameBox.text(), self.groupView.currentItem())
+        selection = PatternManagerWidget.get_cur_selection(self.patternView)
+        PMC.create_pattern(selection.text(), self.nameBox.text(), 'g1')         # TODO: get right g_id, pat_typ -> ascii string
         self.close()
 
     def _on_rejected(self):
@@ -118,12 +119,12 @@ class TableItemModel(QStandardItemModel):
         self.setColumnCount(1)
         self.setRowCount(2)
 
-        type_header = QStandardItem('Type')
-        type = QStandardItem(cur_selection.whatsThis())
-        type.setEditable(False)
+        typ_header = QStandardItem('Type')
+        typ = QStandardItem(cur_selection.whatsThis())
+        typ.setEditable(False)
 
-        self.setVerticalHeaderItem(0, type_header)
-        self.setItem(0, 0, type)
+        self.setVerticalHeaderItem(0, typ_header)
+        self.setItem(0, 0, typ)
 
         name_header = QStandardItem('Name')
         name = QStandardItem(cur_selection.text())
@@ -152,14 +153,15 @@ class PatternManagerWidget(QWidget):
         selection_model = self.treeView.selectionModel()
 
         def update_model():
-            self.table_model.update_model(self._get_cur_selection(self.treeView))
+            self.table_model.update_model(self.get_cur_selection(self.treeView))
 
         selection_model.selectionChanged.connect(update_model)
 
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self._show_context_menu)
 
-    def _get_cur_selection(self, view):
+    @staticmethod
+    def get_cur_selection(view):
         selection_model = view.selectionModel()
         index = selection_model.currentIndex()
         cur_selection = selection_model.model().itemFromIndex(index)
@@ -171,7 +173,7 @@ class PatternManagerWidget(QWidget):
         ac_new_pat = menu.addAction("Add Pattern..")
         ac_new_grp = menu.addAction("Add Group..")
 
-        if not self._get_cur_selection(self.treeView).whatsThis() == 'Group':
+        if not self.get_cur_selection(self.treeView).whatsThis() == 'Group':
             ac_new_pat.setEnabled(False)
             ac_new_grp.setEnabled(False)
 
@@ -187,4 +189,3 @@ class PatternManagerWidget(QWidget):
 
         self.wdg.show()
         self.wdg.destroyed.connect(self.tree_model.update_model)
-
