@@ -59,11 +59,11 @@ class PatternManagerClient():
             print "Service call failed: %s"%e
 
     @staticmethod
-    def create_pattern(pat_type, pat_name, gop_id):
+    def create_pattern(pat_type, pat_name, par_grp_id):
         rospy.wait_for_service('pattern_manager/create_pattern')
         try:
             crt_pat = rospy.ServiceProxy('pattern_manager/create_pattern', pm_srv.CreatePattern)
-            resp = crt_pat(pat_type, pat_name, gop_id)
+            resp = crt_pat(pat_type, pat_name, par_grp_id)
 
             return resp.success
         except rospy.ServiceException, e:

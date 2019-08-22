@@ -45,12 +45,14 @@ class NewGroupWidget(QWidget):
 
 
 class NewPatternWidget(QWidget):
-    def __init__(self):
+    def __init__(self, grp_id):
         super(NewPatternWidget, self).__init__()
 
         Utils.load_ui('new_pattern.ui', self)
         self.setObjectName('NewPatternWidget')
         self.setAttribute(Qt.WA_DeleteOnClose, True)
+
+        self.group_id = grp_id
 
         self._populate_pattern_view()
 
@@ -68,8 +70,11 @@ class NewPatternWidget(QWidget):
         self.patternView.setModel(model)
 
     def _on_accepted(self):
-        selection = PatternManagerWidget.get_cur_selection(self.patternView)
-        PMC.create_pattern(selection.text(), self.nameBox.text(), 'g1')         # TODO: get right g_id, pat_typ -> ascii string
+        selection = MainWidget.get_cur_selection(self.patternView)
+        pat_typ = selection.text().encode('ascii', 'ignore')
+        pat_nm = self.nameBox.text().encode('ascii', 'ignore')
+        PMC.create_pattern(pat_typ, pat_nm, self.group_id)
+
         self.close()
 
     def _on_rejected(self):
@@ -92,21 +97,24 @@ class TreeItemModel(QStandardItemModel):
 
         nodes = {}
         types = {}
+        ids = {}
         for i in deps:
             name, par_name = i.name_and_parent
             nodes[name] = {}
             types[name] = i.type
+            ids[name] = i.id
 
         tree = Utils.deps_tree_from_nested_lists(deps, nodes)
-        self._build_model(tree, self.invisibleRootItem(), types)
+        self._build_model(tree, self.invisibleRootItem(), types, ids)
 
-    def _build_model(self, children, parent, typs):
+    def _build_model(self, children, parent, typs, ids):
         for child in sorted(children):
             child_item = QStandardItem(child)
             child_item.setWhatsThis(typs[child])
+            child_item.setData(ids[child])
             child_item.setEditable(False)
             parent.appendRow(child_item)
-            self._build_model(children[child], child_item, typs)
+            self._build_model(children[child], child_item, typs, ids)
 
 
 class TableItemModel(QStandardItemModel):
@@ -117,26 +125,32 @@ class TableItemModel(QStandardItemModel):
         self.clear()
 
         self.setColumnCount(1)
-        self.setRowCount(2)
-
-        typ_header = QStandardItem('Type')
-        typ = QStandardItem(cur_selection.whatsThis())
-        typ.setEditable(False)
-
-        self.setVerticalHeaderItem(0, typ_header)
-        self.setItem(0, 0, typ)
 
         name_header = QStandardItem('Name')
         name = QStandardItem(cur_selection.text())
         name.setEditable(False)
 
-        self.setVerticalHeaderItem(1, name_header)
-        self.setItem(1, 0, name)
+        self.setVerticalHeaderItem(0, name_header)
+        self.setItem(0, 0, name)
+
+        typ_header = QStandardItem('Type')
+        typ = QStandardItem(cur_selection.whatsThis())
+        typ.setEditable(False)
+
+        self.setVerticalHeaderItem(1, typ_header)
+        self.setItem(1, 0, typ)
+
+        id_header = QStandardItem('Id')
+        id = QStandardItem(str(cur_selection.data()))
+        id.setEditable(False)
+
+        self.setVerticalHeaderItem(2, id_header)
+        self.setItem(2, 0, id)
 
 
-class PatternManagerWidget(QWidget):
+class MainWidget(QWidget):
     def __init__(self):
-        super(PatternManagerWidget, self).__init__()
+        super(MainWidget, self).__init__()
 
         Utils.load_ui('pattern_manager_widget.ui', self)
         self.setObjectName('PatternManagerWidget')
@@ -173,7 +187,9 @@ class PatternManagerWidget(QWidget):
         ac_new_pat = menu.addAction("Add Pattern..")
         ac_new_grp = menu.addAction("Add Group..")
 
-        if not self.get_cur_selection(self.treeView).whatsThis() == 'Group':
+        cur_selection = self.get_cur_selection(self.treeView)
+
+        if not cur_selection.whatsThis() == 'Group':
             ac_new_pat.setEnabled(False)
             ac_new_grp.setEnabled(False)
 
@@ -181,7 +197,7 @@ class PatternManagerWidget(QWidget):
 
         self.wdg = None
         if action == ac_new_pat:
-            self.wdg = NewPatternWidget()
+            self.wdg = NewPatternWidget(cur_selection.data())
         elif action == ac_new_grp:
             self.wdg = NewGroupWidget()
         else:
