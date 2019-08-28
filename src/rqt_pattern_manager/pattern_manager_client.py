@@ -30,7 +30,7 @@ class Service(rospy.ServiceProxy):
         self.srv = super(Service, self).__init__(srv_name, srv_type)
         self.srv_name = srv_name
 
-    def go(self, *args):
+    def call_service(self, *args):
         rospy.wait_for_service(self.srv_name)
 
         try:

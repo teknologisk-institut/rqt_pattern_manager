@@ -41,7 +41,7 @@ class NewGroupWidget(QWidget):
 
     def _on_accepted(self):
         srv_create_grp = _pmc.get_service('pattern_manager/create_group')
-        srv_create_grp.go(self.groupBox.currentText(), self.nameBox.text())
+        srv_create_grp.call_service(self.groupBox.currentText(), self.nameBox.text())
 
         self.close()
 
@@ -72,7 +72,7 @@ class NewPatternWidget(QWidget):
 
         srv_get_pat_types = _pmc.get_service('pattern_manager/get_pattern_types')
 
-        resp = srv_get_pat_types.go()
+        resp = srv_get_pat_types.call_service()
         for p in resp.pattern_types:
             item = QStandardItem(p)
             model.appendRow(item)
@@ -85,7 +85,7 @@ class NewPatternWidget(QWidget):
         pat_nm = self.nameBox.text().encode('ascii', 'ignore')
 
         srv_create_pat = _pmc.get_service('pattern_manager/create_pattern')
-        srv_create_pat.go(pat_typ, pat_nm, self.group_id)
+        srv_create_pat.call_service(pat_typ, pat_nm, self.group_id)
 
         self.close()
 
@@ -107,8 +107,8 @@ class TreeItemModel(QStandardItemModel):
         srv_get_grps = _pmc.get_service('pattern_manager/get_groups')
         srv_get_pats = _pmc.get_service('pattern_manager/get_patterns')
 
-        resp_grp = srv_get_grps.go()
-        resp_pat = srv_get_pats.go()
+        resp_grp = srv_get_grps.call_service()
+        resp_pat = srv_get_pats.call_service()
 
         deps = resp_grp.group_deps + resp_pat.group_deps
 
