@@ -60,35 +60,44 @@ class ServiceFactory(object):
         return srv_proxy
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
 class PatternManagerClient():
+    __metaclass__ = Singleton
 
     def __init__(self):
+        ServiceFactory.register(
+            'pattern_manager/get_pattern_types',
+            pm_srv.PatternTypes
+        )
+        ServiceFactory.register(
+            'pattern_manager/get_patterns',
+            pm_srv.GroupTree
+        )
+        ServiceFactory.register(
+            'pattern_manager/get_groups',
+            pm_srv.GroupTree
+        )
+        ServiceFactory.register(
+            'pattern_manager/create_pattern',
+            pm_srv.CreatePattern
+        )
+        ServiceFactory.register(
+            'pattern_manager/create_group',
+            pm_srv.CreateGroup
+        )
 
         if '/pattern_manager' in rosnode.get_node_names():
             return
 
         self.run_node('pattern_manager', 'pattern_manager')
-
-    ServiceFactory.register(
-        'pattern_manager/get_pattern_types',
-        pm_srv.PatternTypes
-    )
-    ServiceFactory.register(
-        'pattern_manager/get_patterns',
-        pm_srv.GroupTree
-    )
-    ServiceFactory.register(
-        'pattern_manager/get_groups',
-        pm_srv.GroupTree
-    )
-    ServiceFactory.register(
-        'pattern_manager/create_pattern',
-        pm_srv.CreatePattern
-    )
-    ServiceFactory.register(
-        'pattern_manager/create_group',
-        pm_srv.CreateGroup
-    )
 
     def get_service(self, name):
         return ServiceFactory.get_proxy(name)
