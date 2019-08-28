@@ -16,14 +16,19 @@
 
 # Author: Mads Vainoe Baatrup
 
+import pattern_manager_client as pmc
+
 from PyQt5.QtWidgets import QWidget, QDockWidget, QFrame, QPushButton, QComboBox, QTreeView, QMenu, qApp, QAction
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtCore import QModelIndex, Qt
 from .utils import Utils
-from .pattern_manager_client import PatternManagerClient as PMC
+
+
+_pmc = pmc.PatternManagerClient()
 
 
 class NewGroupWidget(QWidget):
+
     def __init__(self):
         super(NewGroupWidget, self).__init__()
 
@@ -35,7 +40,9 @@ class NewGroupWidget(QWidget):
         self.dialogButton.rejected.connect(self._on_rejected)
 
     def _on_accepted(self):
-        PMC.create_group(self.groupBox.currentText(), self.nameBox.text())
+        srv_create_grp = _pmc.get_service('pattern_manager/create_group')
+        srv_create_grp.go(self.groupBox.currentText(), self.nameBox.text())
+
         self.close()
 
     def _on_rejected(self):
@@ -45,6 +52,7 @@ class NewGroupWidget(QWidget):
 
 
 class NewPatternWidget(QWidget):
+
     def __init__(self, grp_id):
         super(NewPatternWidget, self).__init__()
 
@@ -62,8 +70,10 @@ class NewPatternWidget(QWidget):
     def _populate_pattern_view(self):
         model = QStandardItemModel(self.patternView)
 
-        pats = PMC.get_pattern_types()
-        for p in pats:
+        srv_get_pat_types = _pmc.get_service('pattern_manager/get_pattern_types')
+
+        resp = srv_get_pat_types.go()
+        for p in resp.pattern_types:
             item = QStandardItem(p)
             model.appendRow(item)
 
@@ -73,7 +83,9 @@ class NewPatternWidget(QWidget):
         selection = MainWidget.get_cur_selection(self.patternView)
         pat_typ = selection.text().encode('ascii', 'ignore')
         pat_nm = self.nameBox.text().encode('ascii', 'ignore')
-        PMC.create_pattern(pat_typ, pat_nm, self.group_id)
+
+        srv_create_pat = _pmc.get_service('pattern_manager/create_pattern')
+        srv_create_pat.go(pat_typ, pat_nm, self.group_id)
 
         self.close()
 
@@ -83,6 +95,7 @@ class NewPatternWidget(QWidget):
 
 
 class TreeItemModel(QStandardItemModel):
+
     def __init__(self):
         super(TreeItemModel, self).__init__()
 
@@ -91,9 +104,13 @@ class TreeItemModel(QStandardItemModel):
     def update_model(self):
         self.clear()
 
-        grp_deps = PMC.get_groups()
-        pat_deps = PMC.get_patterns()
-        deps = grp_deps + pat_deps
+        srv_get_grps = _pmc.get_service('pattern_manager/get_groups')
+        srv_get_pats = _pmc.get_service('pattern_manager/get_patterns')
+
+        resp_grp = srv_get_grps.go()
+        resp_pat = srv_get_pats.go()
+
+        deps = resp_grp.group_deps + resp_pat.group_deps
 
         nodes = {}
         types = {}
@@ -118,6 +135,7 @@ class TreeItemModel(QStandardItemModel):
 
 
 class TableItemModel(QStandardItemModel):
+
     def __init__(self):
         super(TableItemModel, self).__init__()
 
@@ -149,6 +167,7 @@ class TableItemModel(QStandardItemModel):
 
 
 class MainWidget(QWidget):
+
     def __init__(self):
         super(MainWidget, self).__init__()
 

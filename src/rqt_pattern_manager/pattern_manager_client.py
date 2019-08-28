@@ -16,71 +16,85 @@
 
 # Author: Mads Vainoe Baatrup
 
-import sys
 import rospy
+import subprocess
+import rosnode
 import pattern_manager.srv as pm_srv
+
+from abc import ABCMeta, abstractmethod
+
+
+class Service(rospy.ServiceProxy):
+
+    def __init__(self, srv_name, srv_type):
+        self.srv = super(Service, self).__init__(srv_name, srv_type)
+        self.srv_name = srv_name
+
+    def go(self, *args):
+        rospy.wait_for_service(self.srv_name)
+
+        try:
+            print self
+            return self.call(*args)
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
+
+
+@abstractmethod
+class ServiceFactory(object):
+    __metaclass__ = ABCMeta
+
+    _services = {}
+
+    @staticmethod
+    def register(name, srv_class):
+        ServiceFactory._services[name] = Service(name, srv_class)
+
+    @staticmethod
+    def get_proxy(name):
+        srv_proxy = ServiceFactory._services[name]
+
+        if not srv_proxy:
+            raise ValueError(name)
+
+        return srv_proxy
 
 
 class PatternManagerClient():
+
     def __init__(self):
-        pass
 
-    @staticmethod
-    def get_pattern_types():
-        rospy.wait_for_service('pattern_manager/get_pattern_types')
+        if '/pattern_manager' in rosnode.get_node_names():
+            return
+
+        self.run_node('pattern_manager', 'pattern_manager')
+
+    ServiceFactory.register(
+        'pattern_manager/get_pattern_types',
+        pm_srv.PatternTypes
+    )
+    ServiceFactory.register(
+        'pattern_manager/get_patterns',
+        pm_srv.GroupTree
+    )
+    ServiceFactory.register(
+        'pattern_manager/get_groups',
+        pm_srv.GroupTree
+    )
+    ServiceFactory.register(
+        'pattern_manager/create_pattern',
+        pm_srv.CreatePattern
+    )
+    ServiceFactory.register(
+        'pattern_manager/create_group',
+        pm_srv.CreateGroup
+    )
+
+    def get_service(self, name):
+        return ServiceFactory.get_proxy(name)
+
+    def run_node(self, pkg_name, exec_name):
         try:
-            get_pat_typs = rospy.ServiceProxy('pattern_manager/get_pattern_types', pm_srv.PatternTypes)
-            resp = get_pat_typs()
-
-            return resp.pattern_types
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
-
-    @staticmethod
-    def get_patterns():
-        rospy.wait_for_service('pattern_manager/get_patterns')
-        try:
-            get_pats = rospy.ServiceProxy('pattern_manager/get_patterns', pm_srv.GroupTree)
-            resp = get_pats()
-
-            return resp.group_deps
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
-
-    @staticmethod
-    def get_groups():
-        rospy.wait_for_service('pattern_manager/get_groups')
-        try:
-            get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GroupTree)
-            resp = get_grps()
-
-            return resp.group_deps
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
-
-    @staticmethod
-    def create_pattern(pat_type, pat_name, par_grp_id):
-        rospy.wait_for_service('pattern_manager/create_pattern')
-        try:
-            crt_pat = rospy.ServiceProxy('pattern_manager/create_pattern', pm_srv.CreatePattern)
-            resp = crt_pat(pat_type, pat_name, par_grp_id)
-
-            return resp.success
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
-
-    @staticmethod
-    def create_group(g_type, name):
-        rospy.wait_for_service('pattern_manager/create_group')
-        try:
-            crt_grp = rospy.ServiceProxy('pattern_manager/create_group', pm_srv.CreateGroup)
-            resp = crt_grp(g_type, name)
-
-            return resp.success
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
-
-
-if __name__ == '__main__':
-    pmc = PatternManagerClient()
-    print pmc.get_pattern_types()
+            subprocess.Popen(['rosrun', pkg_name, exec_name])
+        except subprocess.CalledProcessError, e:
+            print "Error: could not run {} node: {}".format(pkg_name, e)

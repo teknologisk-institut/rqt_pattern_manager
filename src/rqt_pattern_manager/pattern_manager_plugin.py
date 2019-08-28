@@ -16,27 +16,18 @@
 
 # Author: Mads Vainoe Baatrup
 
-import os
-import rospy
-import rospkg
+import rosnode
+import subprocess
 
 from qt_gui.plugin import Plugin
 from .pattern_manager_widget import MainWidget
 
 
 class PatternManagerPlugin(Plugin):
+
     def __init__(self, context):
         super(PatternManagerPlugin, self).__init__(context)
         self.setObjectName('PatternManagerPlugin')
-
-        from argparse import ArgumentParser
-        parser = ArgumentParser()
-        parser.add_argument("-q", "--quiet", action="store_true", dest="quiet", help="Put plugin in silent mode")
-        
-        args, unknowns = parser.parse_known_args(context.argv())
-        if not args.quiet:
-            print 'arguments: ', args
-            print 'unknowns: ', unknowns
 
         self._widget = MainWidget()
 
@@ -47,6 +38,8 @@ class PatternManagerPlugin(Plugin):
 
     def shutdown_plugin(self):
         # TODO unregister all publishers here
+        # self.proc.kill()
+        # rospy.loginfo('killing pattern_manager node')
         pass
 
     def save_settings(self, plugin_settings, instance_settings):
@@ -58,3 +51,9 @@ class PatternManagerPlugin(Plugin):
         # TODO restore intrinsic configuration, usually using:
         # v = instance_settings.value(k)
         pass
+
+    def run_node(self, pkg_name, exec_name):
+        try:
+            self.proc = subprocess.Popen(['rosrun', pkg_name, exec_name])
+        except subprocess.CalledProcessError, e:
+            print "Error: could not run {} node: {}".format(pkg_name, e)
