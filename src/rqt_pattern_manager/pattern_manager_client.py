@@ -24,35 +24,37 @@ import pattern_manager.srv as pm_srv
 from abc import ABCMeta, abstractmethod
 
 
-class Service(rospy.ServiceProxy):
+class ServiceProxy(rospy.ServiceProxy):
 
     def __init__(self, srv_name, srv_type):
-        self.srv = super(Service, self).__init__(srv_name, srv_type)
+        super(ServiceProxy, self).__init__(srv_name, srv_type)
         self.srv_name = srv_name
 
     def call_service(self, *args):
         rospy.wait_for_service(self.srv_name)
 
         try:
-            print self
             return self.call(*args)
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
 
 @abstractmethod
-class ServiceFactory(object):
+class ServiceProxyFactory(object):
     __metaclass__ = ABCMeta
 
     _services = {}
 
     @staticmethod
-    def register(name, srv_class):
-        ServiceFactory._services[name] = Service(name, srv_class)
+    def create_proxy(name, srv_type):
+        srv_proxy = ServiceProxy(name, srv_type)
+        ServiceProxyFactory._services[name] = srv_proxy
+
+        return srv_proxy
 
     @staticmethod
     def get_proxy(name):
-        srv_proxy = ServiceFactory._services[name]
+        srv_proxy = ServiceProxyFactory._services[name]
 
         if not srv_proxy:
             raise ValueError(name)
@@ -73,23 +75,23 @@ class PatternManagerClient():
     __metaclass__ = Singleton
 
     def __init__(self):
-        ServiceFactory.register(
+        self.srv_get_pattern_types = ServiceProxyFactory.create_proxy(
             'pattern_manager/get_pattern_types',
             pm_srv.PatternTypes
         )
-        ServiceFactory.register(
+        self.srv_get_patterns = ServiceProxyFactory.create_proxy(
             'pattern_manager/get_patterns',
             pm_srv.GroupTree
         )
-        ServiceFactory.register(
+        self.srv_get_groups = ServiceProxyFactory.create_proxy(
             'pattern_manager/get_groups',
             pm_srv.GroupTree
         )
-        ServiceFactory.register(
+        self.srv_create_pattern = ServiceProxyFactory.create_proxy(
             'pattern_manager/create_pattern',
             pm_srv.CreatePattern
         )
-        ServiceFactory.register(
+        self.srv_create_group = ServiceProxyFactory.create_proxy(
             'pattern_manager/create_group',
             pm_srv.CreateGroup
         )
@@ -97,12 +99,10 @@ class PatternManagerClient():
         if '/pattern_manager' in rosnode.get_node_names():
             return
 
-        self.run_node('pattern_manager', 'pattern_manager')
+        self._run_node('pattern_manager', 'pattern_manager')
 
-    def get_service(self, name):
-        return ServiceFactory.get_proxy(name)
-
-    def run_node(self, pkg_name, exec_name):
+    @staticmethod
+    def _run_node(pkg_name, exec_name):
         try:
             subprocess.Popen(['rosrun', pkg_name, exec_name])
         except subprocess.CalledProcessError, e:
