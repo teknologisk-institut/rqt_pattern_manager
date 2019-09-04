@@ -27,6 +27,66 @@ from .utils import Utils
 _pmc = pmc.PatternManagerClient()
 
 
+class MainWidget(QWidget):
+
+    def __init__(self):
+        super(MainWidget, self).__init__()
+
+        Utils.load_ui('pattern_manager_widget.ui', self)
+        self.setObjectName('PatternManagerWidget')
+
+        self.tree_model = TreeItemModel()
+        self.treeView.setModel(self.tree_model)
+        self.treeView.setHeaderHidden(True)
+        self.treeView.expandAll()
+
+        self.table_model = TableItemModel()
+        self.parameterView.setModel(self.table_model)
+        self.parameterView.horizontalHeader().hide()
+
+        selection_model = self.treeView.selectionModel()
+
+        def update_model():
+            self.table_model.update_model(self.get_cur_selection(self.treeView))
+
+        selection_model.selectionChanged.connect(update_model)
+
+        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.treeView.customContextMenuRequested.connect(self._show_context_menu)
+
+    @staticmethod
+    def get_cur_selection(view):
+        selection_model = view.selectionModel()
+        index = selection_model.currentIndex()
+        cur_selection = selection_model.model().itemFromIndex(index)
+
+        return cur_selection
+
+    def _show_context_menu(self, position):
+        menu = QMenu()
+        ac_new_pat = menu.addAction("Add Pattern..")
+        ac_new_grp = menu.addAction("Add Group..")
+
+        cur_selection = self.get_cur_selection(self.treeView)
+
+        if not cur_selection.whatsThis() == 'Group':
+            ac_new_pat.setEnabled(False)
+            ac_new_grp.setEnabled(False)
+
+        action = menu.exec_(self.treeView.mapToGlobal(position))
+
+        self.wdg = None
+        if action == ac_new_pat:
+            self.wdg = NewPatternWidget(cur_selection.data())
+        elif action == ac_new_grp:
+            self.wdg = NewGroupWidget()
+        else:
+            return
+
+        self.wdg.show()
+        self.wdg.destroyed.connect(self.tree_model.update_model)
+
+
 class NewGroupWidget(QWidget):
 
     def __init__(self):
@@ -160,63 +220,3 @@ class TableItemModel(QStandardItemModel):
 
         self.setVerticalHeaderItem(2, id_header)
         self.setItem(2, 0, id)
-
-
-class MainWidget(QWidget):
-
-    def __init__(self):
-        super(MainWidget, self).__init__()
-
-        Utils.load_ui('pattern_manager_widget.ui', self)
-        self.setObjectName('PatternManagerWidget')
-
-        self.tree_model = TreeItemModel()
-        self.treeView.setModel(self.tree_model)
-        self.treeView.setHeaderHidden(True)
-        self.treeView.expandAll()
-
-        self.table_model = TableItemModel()
-        self.parameterView.setModel(self.table_model)
-        self.parameterView.horizontalHeader().hide()
-
-        selection_model = self.treeView.selectionModel()
-
-        def update_model():
-            self.table_model.update_model(self.get_cur_selection(self.treeView))
-
-        selection_model.selectionChanged.connect(update_model)
-
-        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.treeView.customContextMenuRequested.connect(self._show_context_menu)
-
-    @staticmethod
-    def get_cur_selection(view):
-        selection_model = view.selectionModel()
-        index = selection_model.currentIndex()
-        cur_selection = selection_model.model().itemFromIndex(index)
-
-        return cur_selection
-
-    def _show_context_menu(self, position):
-        menu = QMenu()
-        ac_new_pat = menu.addAction("Add Pattern..")
-        ac_new_grp = menu.addAction("Add Group..")
-
-        cur_selection = self.get_cur_selection(self.treeView)
-
-        if not cur_selection.whatsThis() == 'Group':
-            ac_new_pat.setEnabled(False)
-            ac_new_grp.setEnabled(False)
-
-        action = menu.exec_(self.treeView.mapToGlobal(position))
-
-        self.wdg = None
-        if action == ac_new_pat:
-            self.wdg = NewPatternWidget(cur_selection.data())
-        elif action == ac_new_grp:
-            self.wdg = NewGroupWidget()
-        else:
-            return
-
-        self.wdg.show()
-        self.wdg.destroyed.connect(self.tree_model.update_model)

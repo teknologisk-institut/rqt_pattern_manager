@@ -21,7 +21,7 @@ import subprocess
 import rosnode
 import pattern_manager.srv as pm_srv
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 
 class ServiceProxy(rospy.ServiceProxy):
@@ -39,7 +39,6 @@ class ServiceProxy(rospy.ServiceProxy):
             print "Service call failed: %s"%e
 
 
-@abstractmethod
 class ServiceProxyFactory(object):
     __metaclass__ = ABCMeta
 
