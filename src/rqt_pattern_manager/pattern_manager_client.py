@@ -17,92 +17,160 @@
 # Author: Mads Vainoe Baatrup
 
 import rospy
-import subprocess
-import rosnode
 import pattern_manager.srv as pm_srv
 
-from abc import ABCMeta
+from std_srvs.srv import Trigger
 
 
-class ServiceProxy(rospy.ServiceProxy):
+def get_transforms():
+    rospy.wait_for_service('pattern_manager/get_transforms')
+    try:
+        get_tfs = rospy.ServiceProxy('pattern_manager/get_transforms', pm_srv.GroupTree)
+        resp = get_tfs()
 
-    def __init__(self, srv_name, srv_type):
-        super(ServiceProxy, self).__init__(srv_name, srv_type)
-        self.srv_name = srv_name
-
-    def call_service(self, *args):
-        rospy.wait_for_service(self.srv_name)
-
-        try:
-            return self.call(*args)
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
+        return resp.group_deps
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
 
 
-class ServiceProxyFactory(object):
-    __metaclass__ = ABCMeta
+def create_transform(name, parent_id=None):
+    rospy.wait_for_service('pattern_manager/create_transform')
+    try:
+        crt_tf = rospy.ServiceProxy('pattern_manager/create_transform', pm_srv.CreateGroup)
+        resp = crt_tf(name, parent_id)
 
-    _services = {}
-
-    @staticmethod
-    def create_proxy(name, srv_type):
-        srv_proxy = ServiceProxy(name, srv_type)
-        ServiceProxyFactory._services[name] = srv_proxy
-
-        return srv_proxy
-
-    @staticmethod
-    def get_proxy(name):
-        srv_proxy = ServiceProxyFactory._services[name]
-
-        if not srv_proxy:
-            raise ValueError(name)
-
-        return srv_proxy
+        return resp.id
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
 
 
-class Singleton(type):
-    _instances = {}
+def remove_transform(id_):
+    rospy.wait_for_service('pattern_manager/remove_transform')
+    try:
+        rm_tf = rospy.ServiceProxy('pattern_manager/remove_transform', pm_srv.NodeId)
+        resp = rm_tf(id_)
 
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
 
 
-class PatternManagerClient():
-    __metaclass__ = Singleton
+def set_active(id_):
+    rospy.wait_for_service('pattern_manager/set_active')
+    try:
+        set_actv = rospy.ServiceProxy('pattern_manager/set_active', pm_srv.SetActive)
+        resp = set_actv(id_)
 
-    def __init__(self):
-        self.srv_get_pattern_types = ServiceProxyFactory.create_proxy(
-            'pattern_manager/get_pattern_types',
-            pm_srv.PatternTypes
-        )
-        self.srv_get_patterns = ServiceProxyFactory.create_proxy(
-            'pattern_manager/get_patterns',
-            pm_srv.GroupTree
-        )
-        self.srv_get_groups = ServiceProxyFactory.create_proxy(
-            'pattern_manager/get_groups',
-            pm_srv.GroupTree
-        )
-        self.srv_create_pattern = ServiceProxyFactory.create_proxy(
-            'pattern_manager/create_pattern',
-            pm_srv.CreatePattern
-        )
-        self.srv_create_group = ServiceProxyFactory.create_proxy(
-            'pattern_manager/create_group',
-            pm_srv.CreateGroup
-        )
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
 
-        if '/pattern_manager' in rosnode.get_node_names():
-            return
 
-        self._run_node('pattern_manager', 'pattern_manager')
+def iterate():
+    rospy.wait_for_service('pattern_manager/iterate')
+    try:
+        iter_ = rospy.ServiceProxy('pattern_manager/iterate', Trigger)
+        resp = iter_()
 
-    @staticmethod
-    def _run_node(pkg_name, exec_name):
-        try:
-            subprocess.Popen(['rosrun', pkg_name, exec_name])
-        except subprocess.CalledProcessError, e:
-            print "Error: could not run {} node: {}".format(pkg_name, e)
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+# def set_pattern_active(id):
+#     rospy.wait_for_service('pattern_manager/set_pattern_active')
+#     try:
+#         set_pat_actv = rospy.ServiceProxy('pattern_manager/set_pattern_active', pm_srv.NodeId)
+#         resp = set_pat_actv(id)
+#
+#         return resp.success
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def get_pattern_types():
+#     rospy.wait_for_service('pattern_manager/get_pattern_types')
+#     try:
+#         get_pat_typs = rospy.ServiceProxy('pattern_manager/get_pattern_types', pm_srv.PatternTypes)
+#         resp = get_pat_typs()
+#
+#         return resp.pattern_types
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def get_pattern_type(id):
+#     rospy.wait_for_service('pattern_manager/get_pattern_type')
+#     try:
+#         get_pat_typ = rospy.ServiceProxy('pattern_manager/get_pattern_type', pm_srv.PatternType)
+#         resp = get_pat_typ(id)
+#
+#         return resp.type
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def get_patterns():
+#     rospy.wait_for_service('pattern_manager/get_patterns')
+#     try:
+#         get_pats = rospy.ServiceProxy('pattern_manager/get_patterns', pm_srv.GroupTree)
+#         resp = get_pats()
+#
+#         return resp.group_deps
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def get_groups():
+#     rospy.wait_for_service('pattern_manager/get_groups')
+#     try:
+#         get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GroupTree)
+#         resp = get_grps()
+#
+#         return resp.group_deps
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def create_pattern(typ, nm, parent_id):
+#     rospy.wait_for_service('pattern_manager/create_pattern')
+#     try:
+#         crt_pat = rospy.ServiceProxy('pattern_manager/create_pattern', pm_srv.CreatePattern)
+#         resp = crt_pat(typ, nm, parent_id)
+#
+#         return resp.id
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def create_group(name, parent_id=None):
+#     rospy.wait_for_service('pattern_manager/create_group')
+#     try:
+#         crt_grp = rospy.ServiceProxy('pattern_manager/create_group', pm_srv.CreateGroup)
+#         resp = crt_grp(name, parent_id)
+#
+#         return resp.id
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def remove_group(id):
+#     rospy.wait_for_service('pattern_manager/remove_group')
+#     try:
+#         rm_grp = rospy.ServiceProxy('pattern_manager/remove_group', pm_srv.NodeId)
+#         resp = rm_grp(id)
+#
+#         return resp.success
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
+#
+#
+# def remove_pattern(id):
+#     rospy.wait_for_service('pattern_manager/remove_pattern')
+#     try:
+#         rm_pat = rospy.ServiceProxy('pattern_manager/remove_pattern', pm_srv.NodeId)
+#         resp = rm_pat(id)
+#
+#         return resp.success
+#     except rospy.ServiceException, e:
+#         print 'Service call failed: %s' % e
