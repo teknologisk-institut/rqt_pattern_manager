@@ -42,19 +42,27 @@ class MainWidget(QWidget):
         self.table_model = TableItemModel()
         self.parameterView.setModel(self.table_model)
         self.parameterView.horizontalHeader().hide()
+        self.parameterView.resizeColumnsToContents()
 
         selection_model = self.treeView.selectionModel()
-
-        def update_model():
-            self.table_model.update_model(self.get_cur_selection(self.treeView))
-            self.parameterView.resizeColumnsToContents()
-
-        selection_model.selectionChanged.connect(update_model)
+        selection_model.selectionChanged.connect(lambda: self.table_model.update(self.get_cur_selection(self.treeView)))
 
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self._show_context_menu)
 
+        self.table_model.dataChanged.connect(self._on_cell_updated)
         self.quitButton.clicked.connect(QApplication.quit)
+
+    def _on_cell_updated(self):
+        tree_item = self.get_cur_selection(self.treeView)
+        table_item = self.get_cur_selection(self.parameterView)
+
+        if not table_item:
+            return
+
+        table_item_header = self.table_model.verticalHeaderItem(table_item.row()).text().lower()
+        update_transform_var(tree_item.data()[0], table_item_header, table_item.text())
+        self.tree_model.update()
 
     @staticmethod
     def get_cur_selection(view):
@@ -92,7 +100,7 @@ class MainWidget(QWidget):
         else:
             return
 
-        self.tree_model.update_model()
+        self.tree_model.update()
         self.treeView.expandAll()
 
 
@@ -101,9 +109,9 @@ class TreeItemModel(QStandardItemModel):
     def __init__(self):
         super(TreeItemModel, self).__init__()
 
-        self.update_model()
+        self.update()
 
-    def update_model(self):
+    def update(self):
         self.clear()
 
         nested_param_lists = get_transforms()
@@ -148,20 +156,20 @@ class TableItemModel(QStandardItemModel):
     def __init__(self):
         super(TableItemModel, self).__init__()
 
-    def update_model(self, cur_selection):
+    def update(self, cur_selection):
         self.clear()
         self.setColumnCount(1)
 
-        def add_item(str_header, str_item, row):
+        def add_item(str_header, str_item, row, editable=False):
             h = QStandardItem(str_header)
             t = QStandardItem(str_item)
-            t.setEditable(False)
+            t.setEditable(editable)
 
             self.setVerticalHeaderItem(row, h)
             self.setItem(row, 0, t)
 
-        add_item('Name', str(cur_selection.text()), 0)
-        add_item('Active', str(cur_selection.data()[2]), 1)
+        add_item('Name', str(cur_selection.text()), 0, True)
+        add_item('Active', str(cur_selection.data()[2]), 1, True)
         add_item('ID', str(cur_selection.data()[0]), 2)
         add_item('Reference Frame', str(cur_selection.data()[1]), 3)
 

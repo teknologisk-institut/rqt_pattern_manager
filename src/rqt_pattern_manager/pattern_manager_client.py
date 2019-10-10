@@ -22,6 +22,17 @@ import pattern_manager.srv as pm_srv
 from std_srvs.srv import Trigger
 
 
+def update_transform_var(id_, var, val):
+    rospy.wait_for_service('pattern_manager/change_name')
+    try:
+        chng_nm = rospy.ServiceProxy('pattern_manager/change_name', pm_srv.UpdateVar)
+        resp = chng_nm(id_, var, val)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
 def get_transforms():
     rospy.wait_for_service('pattern_manager/get_transforms')
     try:
