@@ -66,11 +66,11 @@ def remove_transform(id_):
         print 'Service call failed: %s' % e
 
 
-def set_active(id_):
+def set_active(id_, active):
     rospy.wait_for_service('pattern_manager/set_active')
     try:
         set_actv = rospy.ServiceProxy('pattern_manager/set_active', pm_srv.SetActive)
-        resp = set_actv(id_)
+        resp = set_actv(id_, active)
 
         return resp.success
     except rospy.ServiceException, e:

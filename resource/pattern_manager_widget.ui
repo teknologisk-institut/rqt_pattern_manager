@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>499</width>
-    <height>580</height>
+    <height>670</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,7 +19,7 @@
   <property name="minimumSize">
    <size>
     <width>499</width>
-    <height>580</height>
+    <height>670</height>
    </size>
   </property>
   <property name="contextMenuPolicy">
@@ -29,41 +29,32 @@
    <string>Pattern Manager</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QTreeView" name="treeView">
-     <property name="minimumSize">
-      <size>
-       <width>388</width>
-       <height>400</height>
-      </size>
-     </property>
-     <property name="accessibleName">
-      <string>treeView</string>
-     </property>
-    </widget>
+   <item row="1" column="0" rowspan="4">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QTreeView" name="treeView">
+       <property name="minimumSize">
+        <size>
+         <width>388</width>
+         <height>400</height>
+        </size>
+       </property>
+       <property name="accessibleName">
+        <string>treeView</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
-   <item row="1" column="0">
-    <widget class="QTableView" name="parameterView">
-     <property name="minimumSize">
-      <size>
-       <width>388</width>
-       <height>149</height>
-      </size>
-     </property>
-     <property name="accessibleName">
-      <string>parameterView</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
+   <item row="1" column="1" rowspan="4">
     <layout class="QVBoxLayout" name="verticalLayout">
      <property name="spacing">
       <number>0</number>
      </property>
      <item>
-      <widget class="QPushButton" name="stepButton">
+      <widget class="QPushButton" name="magicButton">
        <property name="text">
-        <string>Step</string>
+        <string>Magic!</string>
        </property>
       </widget>
      </item>
@@ -96,7 +87,23 @@
      </item>
     </layout>
    </item>
-   <item row="1" column="1">
+   <item row="10" column="0">
+    <widget class="QTableView" name="parameterView">
+     <property name="minimumSize">
+      <size>
+       <width>388</width>
+       <height>200</height>
+      </size>
+     </property>
+     <property name="accessibleName">
+      <string>parameterView</string>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="1">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <property name="spacing">
       <number>0</number>
@@ -122,6 +129,42 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="7" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="stepButton">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+         <weight>50</weight>
+         <italic>false</italic>
+         <bold>false</bold>
+         <underline>false</underline>
+         <strikeout>false</strikeout>
+         <kerning>true</kerning>
+        </font>
+       </property>
+       <property name="text">
+        <string>&gt;|</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QProgressBar" name="progressBar">
+       <property name="value">
+        <number>24</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="8" column="0" colspan="2">
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

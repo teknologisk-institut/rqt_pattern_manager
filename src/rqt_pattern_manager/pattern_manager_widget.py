@@ -16,11 +16,12 @@
 
 # Author: Mads Vainoe Baatrup
 
-from pattern_manager_client import *
+import random
+import pattern_manager_client as pmc
 
 from PyQt5.QtWidgets import QWidget, QPushButton, QComboBox, QTreeView, QMenu, QAction, QApplication
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor
-from PyQt5.QtCore import QModelIndex, Qt
+from PyQt5.QtCore import QModelIndex, pyqtSignal, Qt
 from .utils import *
 
 from pprint import pprint
@@ -39,36 +40,39 @@ class MainWidget(QWidget):
         self.treeView.setHeaderHidden(True)
         self.treeView.expandAll()
 
-        self.table_model = TableItemModel()
-        self.parameterView.setModel(self.table_model)
+        self.param_model = TableItemModel()
+        self.parameterView.setModel(self.param_model)
         self.parameterView.horizontalHeader().hide()
-        self.parameterView.resizeColumnsToContents()
 
         selection_model = self.treeView.selectionModel()
-        selection_model.selectionChanged.connect(lambda: self.table_model.update(self.get_cur_selection(self.treeView)))
+        selection_model.selectionChanged.connect(lambda: self.param_model.update(self.get_cur_selection(self.treeView)))
+        selection_model.selectionChanged.connect(self.parameterView.resizeColumnsToContents)
+
+        self.param_model.dataChanged.connect(lambda: self.param_model.on_data_changed(
+            self.get_cur_selection(self.parameterView),
+            self.get_cur_selection(self.treeView)))
+
+        self.param_model.cellUpdated.connect(self.tree_model.update)
+        self.param_model.cellUpdated.connect(self.treeView.expandAll)
 
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self._show_context_menu)
 
-        self.table_model.dataChanged.connect(self._on_cell_updated)
+        self.magicButton.clicked.connect(self.magic)
         self.quitButton.clicked.connect(QApplication.quit)
 
-    def _on_cell_updated(self):
-        tree_item = self.get_cur_selection(self.treeView)
-        table_item = self.get_cur_selection(self.parameterView)
-
-        if not table_item:
-            return
-
-        table_item_header = self.table_model.verticalHeaderItem(table_item.row()).text().lower()
-        update_transform_var(tree_item.data()[0], table_item_header, table_item.text())
-        self.tree_model.update()
+    def magic(self):
+        self.setAutoFillBackground(True)
+        colors = [Qt.black, Qt.red, Qt.green, Qt.gray, Qt.yellow, Qt.blue]
+        p = self.palette()
+        p.setColor(self.backgroundRole(), random.choice(colors))
+        self.setPalette(p)
 
     @staticmethod
     def get_cur_selection(view):
         selection_model = view.selectionModel()
         index = selection_model.currentIndex()
-        cur_selection = selection_model.model().itemFromIndex(index)
+        cur_selection = view.model().itemFromIndex(index)
 
         return cur_selection
 
@@ -83,25 +87,54 @@ class MainWidget(QWidget):
         ac_remove = menu.addAction("Remove")
         menu.addSeparator()
         ac_set_actv = menu.addAction("Set Active")
+        ac_set_inactive = menu.addAction("Set Inactive")
 
         action = menu.exec_(self.treeView.mapToGlobal(position))
 
         if action == ac_new_tf:
-            # self.wdg = NewTransformWidget()
-            # self.wdg.show()
-            # self.wdg.destroyed.connect(self.tree_model.update_model)
-            # self.wdg.destroyed.connect(self.treeView.expandAll)
-
-            return
+            self.wdg = CreateWidget()
+            self.wdg.show()
         elif action == ac_remove:
-            remove_transform(cur_selection.data()[0])
+            pmc.remove_transform(cur_selection.data()[0][1])
         elif action == ac_set_actv:
-            set_active(cur_selection.data()[0])
+            pmc.set_active(cur_selection.data()[0][1], True)
+        elif action == ac_set_inactive:
+            pmc.set_active(cur_selection.data()[0][1], False)
         else:
             return
 
         self.tree_model.update()
         self.treeView.expandAll()
+
+
+class CreateWidget(QWidget):
+
+    def __init__(self):
+        super(CreateWidget, self).__init__()
+
+        load_ui('create.ui', self)
+        self.setObjectName('CreateWidget')
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
+
+        self.dialogButton.accepted.connect(self._on_accepted)
+        self.dialogButton.rejected.connect(self._on_rejected)
+
+    def _on_accepted(self):
+        # TODO: create transform via pmc
+        self.close()
+
+    def _on_rejected(self):
+        self.nameText.clear()
+        self.referenceText.clear()
+        self.xText.clear()
+        self.yText.clear()
+        self.zText.clear()
+        self.qxText.clear()
+        self.qyText.clear()
+        self.qzText.clear()
+        self.qwText.clear()
+
+        self.close()
 
 
 class TreeItemModel(QStandardItemModel):
@@ -114,12 +147,14 @@ class TreeItemModel(QStandardItemModel):
     def update(self):
         self.clear()
 
-        nested_param_lists = get_transforms()
+        nested_param_lists = pmc.get_transforms()
 
         params = {
             'ids': {},
             'ref_frames': {},
-            'active': {}
+            'active': {},
+            'translation': {},
+            'rotation': {}
         }
 
         nodes = {}
@@ -129,6 +164,8 @@ class TreeItemModel(QStandardItemModel):
             params['ids'][name] = i.id
             params['ref_frames'][name] = i.ref_frame
             params['active'][name] = i.active
+            params['translation'][name] = [i.tf.translation.x, i.tf.translation.y, i.tf.translation.z]
+            params['rotation'][name] = [i.tf.rotation.x, i.tf.rotation.y, i.tf.rotation.z, i.tf.rotation.w]
 
         tree = param_tree_from_nested_lists(nested_param_lists, nodes)
         self._build_model(tree, self.invisibleRootItem(), params)
@@ -138,9 +175,11 @@ class TreeItemModel(QStandardItemModel):
             child_item = QStandardItem(child)
             child_item.setData(
                 [
-                    params['ids'][child],
-                    params['ref_frames'][child],
-                    params['active'][child]
+                    ('id', params['ids'][child]),
+                    ('ref_frame', params['ref_frames'][child]),
+                    ('active', params['active'][child]),
+                    ('translation', params['translation'][child]),
+                    ('rotation', params['rotation'][child])
                 ])
             child_item.setEditable(False)
 
@@ -153,10 +192,21 @@ class TreeItemModel(QStandardItemModel):
 
 class TableItemModel(QStandardItemModel):
 
+    cellUpdated = pyqtSignal()
+
     def __init__(self):
         super(TableItemModel, self).__init__()
 
-    def update(self, cur_selection):
+    def on_data_changed(self, item, parent):
+        if not item or not parent:
+            return
+
+        item_header = self.verticalHeaderItem(item.row()).text().lower()
+        pmc.update_transform_var(parent.data()[0][1], item_header, item.text())
+
+        self.cellUpdated.emit()
+
+    def update(self, parent):
         self.clear()
         self.setColumnCount(1)
 
@@ -168,238 +218,9 @@ class TableItemModel(QStandardItemModel):
             self.setVerticalHeaderItem(row, h)
             self.setItem(row, 0, t)
 
-        add_item('Name', str(cur_selection.text()), 0, True)
-        add_item('Active', str(cur_selection.data()[2]), 1, True)
-        add_item('ID', str(cur_selection.data()[0]), 2)
-        add_item('Reference Frame', str(cur_selection.data()[1]), 3)
-
-
-# class MainWidget(QWidget):
-#
-#     def __init__(self):
-#         super(MainWidget, self).__init__()
-#
-#         load_ui('pattern_manager_widget.ui', self)
-#         self.setObjectName('PatternManagerWidget')
-#
-#         self.tree_model = TreeItemModel()
-#         self.treeView.setModel(self.tree_model)
-#         self.treeView.setHeaderHidden(True)
-#         self.treeView.expandAll()
-#
-#         self.table_model = TableItemModel()
-#         self.parameterView.setModel(self.table_model)
-#         self.parameterView.horizontalHeader().hide()
-#         self.parameterView.setWordWrap(True)
-#
-#         selection_model = self.treeView.selectionModel()
-#
-#         def update_model():
-#             self.table_model.update_model(self.get_cur_selection(self.treeView))
-#             self.parameterView.resizeColumnsToContents()
-#
-#         selection_model.selectionChanged.connect(update_model)
-#
-#         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
-#         self.treeView.customContextMenuRequested.connect(self._show_context_menu)
-#
-#         self.quitButton.clicked.connect(QApplication.quit)
-#
-#     @staticmethod
-#     def get_cur_selection(view):
-#         selection_model = view.selectionModel()
-#         index = selection_model.currentIndex()
-#         cur_selection = selection_model.model().itemFromIndex(index)
-#
-#         return cur_selection
-#
-#     def _show_context_menu(self, position):
-#         cur_selection = self.get_cur_selection(self.treeView)
-#
-#         if not cur_selection:
-#             return
-#
-#         menu = QMenu()
-#         ac_set_actv = menu.addAction("Set Active")
-#         menu.addSeparator()
-#         ac_new_grp = menu.addAction("Add Node..")
-#         ac_new_pat = menu.addAction("Add Pattern..")
-#         menu.addSeparator()
-#         ac_remove = menu.addAction("Remove")
-#
-#         if cur_selection.data()[1] == 'Pattern':
-#             ac_new_pat.setEnabled(False)
-#             ac_new_grp.setEnabled(False)
-#         elif cur_selection.data()[1] == 'Tree' and cur_selection.hasChildren():
-#             ac_set_actv.setEnabled(False)
-#
-#             if cur_selection.child(0, 0).data()[1] == 'Tree':
-#                 ac_new_pat.setEnabled(False)
-#             elif cur_selection.child(0, 0).data()[1] == 'Pattern':
-#                 ac_new_grp.setEnabled(False)
-#
-#         action = menu.exec_(self.treeView.mapToGlobal(position))
-#
-#         self.wdg = None
-#         if action == ac_new_pat:
-#             self.wdg = NewPatternWidget(cur_selection.data()[0])
-#         elif action == ac_new_grp:
-#             self.wdg = NewGroupWidget(cur_selection.data()[0])
-#         elif action == ac_remove:
-#             if cur_selection.data()[1] == "Tree":
-#                 remove_group(cur_selection.data()[0])
-#             elif cur_selection.data()[1] == "Pattern":
-#                 remove_pattern(cur_selection.data()[0])
-#         elif action == ac_set_actv:
-#             print 'Setting active'
-#         else:
-#             return
-#
-#         if self.wdg:
-#             self.wdg.show()
-#             self.wdg.destroyed.connect(self.tree_model.update_model)
-#             self.wdg.destroyed.connect(self.treeView.expandAll)
-#
-#             return
-#
-#         self.tree_model.update_model()
-#         self.treeView.expandAll()
-#
-#
-# class NewGroupWidget(QWidget):
-#
-#     def __init__(self, par_id):
-#         super(NewGroupWidget, self).__init__()
-#
-#         self.par_id = par_id
-#
-#         load_ui('new_group.ui', self)
-#         self.setObjectName('NewGroupWidget')
-#         self.setAttribute(Qt.WA_DeleteOnClose, True)
-#
-#         self.dialogButton.accepted.connect(self._on_accepted)
-#         self.dialogButton.rejected.connect(self._on_rejected)
-#
-#     def _on_accepted(self):
-#         create_group(self.par_id, self.nameBox.text())
-#
-#         self.close()
-#
-#     def _on_rejected(self):
-#         self.groupBox.clear()
-#         self.nameBox.clear()
-#         self.close()
-#
-#
-# class NewPatternWidget(QWidget):
-#
-#     def __init__(self, grp_id):
-#         super(NewPatternWidget, self).__init__()
-#
-#         load_ui('new_pattern.ui', self)
-#         self.setObjectName('NewPatternWidget')
-#         self.setAttribute(Qt.WA_DeleteOnClose, True)
-#
-#         self.group_id = grp_id
-#
-#         self._populate_pattern_view()
-#
-#         self.dialogButton.accepted.connect(self._on_accepted)
-#         self.dialogButton.rejected.connect(self._on_rejected)
-#
-#     def _populate_pattern_view(self):
-#         model = QStandardItemModel(self.patternView)
-#
-#         typs = get_pattern_types()
-#         for t in typs:
-#             item = QStandardItem(t)
-#             model.appendRow(item)
-#
-#         self.patternView.setModel(model)
-#
-#     def _on_accepted(self):
-#         selection = MainWidget.get_cur_selection(self.patternView)
-#         pat_typ = selection.text().encode('ascii', 'ignore')
-#         pat_nm = self.nameBox.text().encode('ascii', 'ignore')
-#
-#         create_pattern(pat_typ, pat_nm, self.group_id)
-#
-#         self.close()
-#
-#     def _on_rejected(self):
-#         self.nameBox.clear()
-#         self.close()
-#
-#
-# class TreeItemModel(QStandardItemModel):
-#
-#     def __init__(self):
-#         super(TreeItemModel, self).__init__()
-#
-#         self.update_model()
-#
-#     def update_model(self):
-#         self.clear()
-#
-#         nested_param_lists = get_groups() + get_patterns()
-#
-#         params = {
-#             'types': {},
-#             'ids': {},
-#             'active': {}
-#         }
-#
-#         nodes = {}
-#         for i in nested_param_lists:
-#             name = i.name
-#             nodes[name] = {}
-#             params['types'][name] = i.type
-#             params['ids'][name] = i.id
-#             params['active'][name] = i.active
-#
-#         tree = param_tree_from_nested_lists(nested_param_lists, nodes)
-#         self._build_model(tree, self.invisibleRootItem(), params)
-#
-#     def _build_model(self, children, parent, params):
-#         for child in sorted(children):
-#             child_item = QStandardItem(child)
-#             child_item.setData(
-#                 [
-#                     params['ids'][child],
-#                     params['types'][child],
-#                     params['active'][child]
-#                 ]
-#             )
-#             child_item.setEditable(False)
-#
-#             if params['active'][child]:
-#                 child_item.setForeground(QBrush(QColor('green')))
-#
-#             parent.appendRow(child_item)
-#             self._build_model(children[child], child_item, params)
-#
-#
-# class TableItemModel(QStandardItemModel):
-#
-#     def __init__(self):
-#         super(TableItemModel, self).__init__()
-#
-#     def update_model(self, cur_selection):
-#         self.clear()
-#         self.setColumnCount(1)
-#
-#         def add_item(str_header, str_item, row):
-#             h = QStandardItem(str_header)
-#             t = QStandardItem(str_item)
-#             t.setEditable(False)
-#
-#             self.setVerticalHeaderItem(row, h)
-#             self.setItem(row, 0, t)
-#
-#         add_item('Name', str(cur_selection.text()), 0)
-#         add_item('Active', str(cur_selection.data()[2]), 1)
-#         add_item('ID', str(cur_selection.data()[0]), 2)
-#         add_item('Type', str(cur_selection.data()[1]), 3)
-#
-#         if cur_selection.data()[1] == 'Pattern':
-#             add_item('Pattern Type', str(get_pattern_type(cur_selection.data()[0])), 4)
+        add_item('name', str(parent.text()), 0, True)
+        add_item(str(parent.data()[2][0]), str(parent.data()[2][1]), 1)
+        add_item(str(parent.data()[0][0]), str(parent.data()[0][1]), 2)
+        add_item(str(parent.data()[1][0]), str(parent.data()[1][1]), 3, True)
+        add_item(str(parent.data()[3][0]), str(parent.data()[3][1]), 4, True)
+        add_item(str(parent.data()[4][0]), str(parent.data()[4][1]), 5, True)
