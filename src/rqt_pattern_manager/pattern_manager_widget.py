@@ -21,18 +21,14 @@ import pattern_manager_client as pmc
 
 from PyQt5.QtWidgets import \
     QWidget, \
-    QPushButton, \
     QComboBox, \
-    QTreeView, \
     QMenu, \
-    QAction, \
     QApplication, \
     QLineEdit, \
     QCheckBox
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor
 from PyQt5.QtCore import QModelIndex, pyqtSignal, Qt
-from .utils import *
-
+from .util import *
 from pprint import pprint
 
 
@@ -145,6 +141,8 @@ class CreateWidget(QWidget):
 
         self.patternWidget.close()
 
+        self.adjustSize()
+
         self.dialogButton.accepted.connect(self._on_accepted)
         self.dialogButton.rejected.connect(self._on_rejected)
 
@@ -166,6 +164,10 @@ class CreateWidget(QWidget):
             self.patternWidget.show()
             self._on_pattern_index_changed()
 
+            return
+
+        self.adjustSize()
+
     def _on_pattern_index_changed(self):
         wdgs = [
             self.linearWidget,
@@ -185,6 +187,8 @@ class CreateWidget(QWidget):
             self.circularWidget.show()
         elif self.patternBox.currentText() == 'Scatter':
             self.scatterWidget.show()
+
+        self.adjustSize()
 
     def _on_accepted(self):
         pmc.create_transform(self.nameText.text(), self.parent.data()['id'])
@@ -236,8 +240,8 @@ class TreeItemModel(QStandardItemModel):
             params['ids'][name] = i.id
             params['ref_frames'][name] = i.ref_frame
             params['active'][name] = i.active
-            params['translation'][name] = i.translation
-            params['rotation'][name] = i.rotation
+            params['translation'][name] = [i.translation.x, i.translation.y, i.translation.z]
+            params['rotation'][name] = [i.rotation.x, i.rotation.y, i.rotation.z, i.rotation.w]
 
         self.tree = param_tree_from_nested_lists(nested_param_lists, nodes)
 
