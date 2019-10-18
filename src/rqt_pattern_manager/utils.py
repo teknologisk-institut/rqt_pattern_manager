@@ -23,9 +23,9 @@ import rospkg
 from python_qt_binding import loadUi
 
 
-def load_ui(file, widget):
+def load_ui(file_, widget):
     rp = rospkg.RosPack()
-    ui_file = os.path.join(rp.get_path('rqt_pattern_manager'), 'resource', file)
+    ui_file = os.path.join(rp.get_path('rqt_pattern_manager'), 'resource', file_)
     loadUi(ui_file, widget)
 
 
@@ -34,7 +34,6 @@ def param_tree_from_nested_lists(lst, nodes):
     for i in lst:
         name = i.name
         par_name = i.parent_name
-        ref_frame = i.ref_frame
         node = nodes[name]
 
         if name == par_name:
@@ -44,3 +43,13 @@ def param_tree_from_nested_lists(lst, nodes):
             parent[name] = node
 
     return tree
+
+
+def find_item_child_by_id(parent, id_):
+    for i in range(0, parent.rowCount()):
+        cur_child = parent.child(i)
+
+        if cur_child.data()['id'] == id_:
+            return cur_child
+
+    return None

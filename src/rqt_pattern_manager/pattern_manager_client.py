@@ -23,9 +23,9 @@ from std_srvs.srv import Trigger
 
 
 def update_transform_var(id_, var, val):
-    rospy.wait_for_service('pattern_manager/change_name')
+    rospy.wait_for_service('pattern_manager/update_tf_variable')
     try:
-        chng_nm = rospy.ServiceProxy('pattern_manager/change_name', pm_srv.UpdateVar)
+        chng_nm = rospy.ServiceProxy('pattern_manager/update_tf_variable', pm_srv.UpdateVar)
         resp = chng_nm(id_, var, val)
 
         return resp.success
@@ -44,7 +44,7 @@ def get_transforms():
         print 'Service call failed: %s' % e
 
 
-def create_transform(name, parent_id=None):
+def create_transform(name, parent_id):
     rospy.wait_for_service('pattern_manager/create_transform')
     try:
         crt_tf = rospy.ServiceProxy('pattern_manager/create_transform', pm_srv.CreateGroup)
@@ -86,102 +86,3 @@ def iterate():
         return resp.success
     except rospy.ServiceException, e:
         print 'Service call failed: %s' % e
-
-
-# def set_pattern_active(id):
-#     rospy.wait_for_service('pattern_manager/set_pattern_active')
-#     try:
-#         set_pat_actv = rospy.ServiceProxy('pattern_manager/set_pattern_active', pm_srv.NodeId)
-#         resp = set_pat_actv(id)
-#
-#         return resp.success
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def get_pattern_types():
-#     rospy.wait_for_service('pattern_manager/get_pattern_types')
-#     try:
-#         get_pat_typs = rospy.ServiceProxy('pattern_manager/get_pattern_types', pm_srv.PatternTypes)
-#         resp = get_pat_typs()
-#
-#         return resp.pattern_types
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def get_pattern_type(id):
-#     rospy.wait_for_service('pattern_manager/get_pattern_type')
-#     try:
-#         get_pat_typ = rospy.ServiceProxy('pattern_manager/get_pattern_type', pm_srv.PatternType)
-#         resp = get_pat_typ(id)
-#
-#         return resp.type
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def get_patterns():
-#     rospy.wait_for_service('pattern_manager/get_patterns')
-#     try:
-#         get_pats = rospy.ServiceProxy('pattern_manager/get_patterns', pm_srv.GroupTree)
-#         resp = get_pats()
-#
-#         return resp.group_deps
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def get_groups():
-#     rospy.wait_for_service('pattern_manager/get_groups')
-#     try:
-#         get_grps = rospy.ServiceProxy('pattern_manager/get_groups', pm_srv.GroupTree)
-#         resp = get_grps()
-#
-#         return resp.group_deps
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def create_pattern(typ, nm, parent_id):
-#     rospy.wait_for_service('pattern_manager/create_pattern')
-#     try:
-#         crt_pat = rospy.ServiceProxy('pattern_manager/create_pattern', pm_srv.CreatePattern)
-#         resp = crt_pat(typ, nm, parent_id)
-#
-#         return resp.id
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def create_group(name, parent_id=None):
-#     rospy.wait_for_service('pattern_manager/create_group')
-#     try:
-#         crt_grp = rospy.ServiceProxy('pattern_manager/create_group', pm_srv.CreateGroup)
-#         resp = crt_grp(name, parent_id)
-#
-#         return resp.id
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def remove_group(id):
-#     rospy.wait_for_service('pattern_manager/remove_group')
-#     try:
-#         rm_grp = rospy.ServiceProxy('pattern_manager/remove_group', pm_srv.NodeId)
-#         resp = rm_grp(id)
-#
-#         return resp.success
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
-#
-#
-# def remove_pattern(id):
-#     rospy.wait_for_service('pattern_manager/remove_pattern')
-#     try:
-#         rm_pat = rospy.ServiceProxy('pattern_manager/remove_pattern', pm_srv.NodeId)
-#         resp = rm_pat(id)
-#
-#         return resp.success
-#     except rospy.ServiceException, e:
-#         print 'Service call failed: %s' % e
