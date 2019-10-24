@@ -31,6 +31,9 @@
   <property name="windowTitle">
    <string>Create Transform(s)</string>
   </property>
+  <property name="accessibleName">
+   <string>mainWidget</string>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="8" column="0">
     <widget class="QWidget" name="transformWidget" native="true">
@@ -272,7 +275,7 @@
           <string/>
          </property>
          <property name="placeholderText">
-          <string extracomment="The name of the transform"/>
+          <string extracomment="The name of the transform">&lt;optional&gt;</string>
          </property>
         </widget>
        </item>
@@ -305,7 +308,7 @@
           <string/>
          </property>
          <property name="placeholderText">
-          <string extracomment="The reference frame of the transform"/>
+          <string extracomment="The reference frame of the transform">&lt;optional&gt;</string>
          </property>
         </widget>
        </item>
@@ -317,6 +320,9 @@
     <widget class="QWidget" name="patternWidget" native="true">
      <property name="enabled">
       <bool>true</bool>
+     </property>
+     <property name="accessibleName">
+      <string>patternWidget</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
@@ -352,6 +358,9 @@
       </item>
       <item>
        <widget class="QWidget" name="linearWidget" native="true">
+        <property name="accessibleName">
+         <string>linearWidget</string>
+        </property>
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -372,6 +381,12 @@
                <width>200</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="accessibleName">
+              <string>numPoints</string>
+             </property>
+             <property name="placeholderText">
+              <string>0</string>
              </property>
             </widget>
            </item>
@@ -397,6 +412,12 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>stepSize</string>
+             </property>
+             <property name="placeholderText">
+              <string>0.0</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -421,6 +442,12 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>length</string>
+             </property>
+             <property name="placeholderText">
+              <string>0.0</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -430,6 +457,9 @@
       </item>
       <item>
        <widget class="QWidget" name="rectangularWidget" native="true">
+        <property name="accessibleName">
+         <string>rectangularWidget</string>
+        </property>
         <layout class="QVBoxLayout" name="verticalLayout_6">
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_15">
@@ -450,6 +480,15 @@
                <width>200</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="accessibleName">
+              <string>numPoints2</string>
+             </property>
+             <property name="text">
+              <string>(4, 4)</string>
+             </property>
+             <property name="placeholderText">
+              <string>(0, 0)</string>
              </property>
             </widget>
            </item>
@@ -475,6 +514,15 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>stepSizes</string>
+             </property>
+             <property name="text">
+              <string>(4.0, 4.0)</string>
+             </property>
+             <property name="placeholderText">
+              <string>(0.0, 0.0)</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -492,12 +540,18 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="LengthsText">
+            <widget class="QLineEdit" name="lengthsText">
              <property name="maximumSize">
               <size>
                <width>200</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="accessibleName">
+              <string>Lengths</string>
+             </property>
+             <property name="placeholderText">
+              <string>(0.0, 0.0)</string>
              </property>
             </widget>
            </item>
@@ -508,6 +562,9 @@
       </item>
       <item>
        <widget class="QWidget" name="circularWidget" native="true">
+        <property name="accessibleName">
+         <string>circularWidget</string>
+        </property>
         <layout class="QVBoxLayout" name="verticalLayout_5">
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -529,8 +586,14 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>numPoints3</string>
+             </property>
              <property name="layoutDirection">
               <enum>Qt::RightToLeft</enum>
+             </property>
+             <property name="placeholderText">
+              <string>0</string>
              </property>
             </widget>
            </item>
@@ -556,8 +619,14 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="accessibleName">
+              <string>radius</string>
+             </property>
              <property name="layoutDirection">
               <enum>Qt::RightToLeft</enum>
+             </property>
+             <property name="placeholderText">
+              <string>0.0</string>
              </property>
             </widget>
            </item>
@@ -628,6 +697,9 @@
       </item>
       <item>
        <widget class="QWidget" name="scatterWidget" native="true">
+        <property name="accessibleName">
+         <string>scatterWidget</string>
+        </property>
         <layout class="QVBoxLayout" name="verticalLayout_7">
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_16">
@@ -648,6 +720,12 @@
                <width>200</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="accessibleName">
+              <string>points</string>
+             </property>
+             <property name="placeholderText">
+              <string>0</string>
              </property>
             </widget>
            </item>

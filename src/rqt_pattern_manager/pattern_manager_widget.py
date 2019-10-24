@@ -16,7 +16,6 @@
 
 # Author: Mads Vainoe Baatrup
 
-import random
 import pattern_manager_client as pmc
 
 from PyQt5.QtWidgets import \
@@ -26,8 +25,8 @@ from PyQt5.QtWidgets import \
     QApplication, \
     QLineEdit, \
     QCheckBox
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor
-from PyQt5.QtCore import QModelIndex, pyqtSignal, Qt
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPainter, QPen, QIcon
+from PyQt5.QtCore import pyqtSignal, Qt, QRect
 from .util import *
 from pprint import pprint
 
@@ -39,6 +38,7 @@ class MainWidget(QWidget):
 
         load_ui('pattern_manager_widget.ui', self)
         self.setObjectName('PatternManagerWidget')
+        self.setWindowIcon(QIcon('resource_dti_logo_small.png'))
 
         self.tree_model = TreeItemModel()
         self.treeView.setModel(self.tree_model)
@@ -53,22 +53,60 @@ class MainWidget(QWidget):
         selection_model.selectionChanged.connect(lambda: self.param_model.update(self.get_cur_selection(self.treeView)))
         selection_model.selectionChanged.connect(self.parameterView.resizeColumnsToContents)
 
-        self.param_model.dataChanged.connect(self._update_transform_variable)
-        self.param_model.dataChanged.connect(self.tree_model.update)
-        self.param_model.dataChanged.connect(self.treeView.expandAll)
+        self.param_model.dataChanged.connect(self._on_param_data_changed)
 
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self._context_menu)
 
-        self.magicButton.clicked.connect(self._magic)
         self.quitButton.clicked.connect(QApplication.quit)
+        self.stepButton.clicked.connect(self._on_iterate)
+        self.activeButton.clicked.connect(lambda: self._call_action(
+            "toggle_activate_item",
+            self.get_cur_selection(self.treeView)
+        ))
+        self.addButton.clicked.connect(lambda: self._call_action(
+            "open_create_widget",
+            self.get_cur_selection(self.treeView)
+        ))
+        self.removeButton.clicked.connect(lambda: self._call_action(
+            "remove_item",
+            self.get_cur_selection(self.treeView)
+        ))
+        self.resetButton.clicked.connect(self._on_reset_all)
 
-    def _magic(self):
-        self.setAutoFillBackground(True)
-        colors = [Qt.black, Qt.red, Qt.green, Qt.gray, Qt.yellow, Qt.blue, Qt.white]
-        p = self.palette()
-        p.setColor(self.backgroundRole(), random.choice(colors))
-        self.setPalette(p)
+        self.init_cnt_actv = len(pmc.get_active_ids())
+        if self.init_cnt_actv > 0:
+            self.progressBar.setValue(100)
+
+    def _on_reset_all(self):
+        actv_ids = pmc.get_active_ids()
+
+        for id_ in actv_ids:
+            pmc.set_active(id_, False)
+
+        self.progressBar.setValue(0)
+        self.tree_model.update()
+
+    def _on_iterate(self):
+        cnt_actv = len(pmc.get_active_ids())
+
+        if cnt_actv == 0:
+            return
+
+        if cnt_actv > 0:
+            self.progressBar.setValue(int((float(cnt_actv) - 1.0) / float(self.init_cnt_actv) * 100.0))
+
+        pmc.iterate()
+
+        self.tree_model.update()
+
+    def _on_param_data_changed(self):
+        selection_model = self.parameterView.selectionModel()
+
+        if selection_model.hasSelection():
+            self._update_transform_variable()
+            self.tree_model.update()
+            self.treeView.expandAll()
 
     def _update_transform_variable(self):
         table_item = self.get_cur_selection(self.parameterView)
@@ -83,34 +121,48 @@ class MainWidget(QWidget):
     def _context_menu(self, position):
         cur_selection = self.get_cur_selection(self.treeView)
 
-        if not cur_selection:
-            return
-
         menu = QMenu()
         ac_new_tf = menu.addAction("Add...")
         ac_remove = menu.addAction("Remove")
 
         menu.addSeparator()
 
-        ac_set_actv = menu.addAction("Set Active")
-        ac_set_inactive = menu.addAction("Set Inactive")
+        ac_set_actv = menu.addAction("Active")
 
         action = menu.exec_(self.treeView.mapToGlobal(position))
         if action == ac_new_tf:
-            self.wdg = CreateWidget(cur_selection)
+            self._call_action("open_create_widget", cur_selection)
+        elif action == ac_remove:
+            self._call_action("remove_item", cur_selection)
+        elif action == ac_set_actv:
+            self._call_action("toggle_activate_item", cur_selection)
+        else:
+            return
+
+    def _call_action(self, action, item):
+
+        if not item:
+            return
+
+        if action == "open_create_widget":
+            self.wdg = CreateWidget(item)
             self.wdg.show()
 
             self.wdg.tfCreated.connect(self.tree_model.update)
             self.wdg.tfCreated.connect(self.treeView.expandAll)
 
             return
-        elif action == ac_remove:
-            pmc.remove_transform(cur_selection.data()['id'])
-            cur_selection.parent().removeRow(cur_selection.row())
-        elif action == ac_set_actv:
-            pmc.set_active(cur_selection.data()['id'], True)
-        elif action == ac_set_inactive:
-            pmc.set_active(cur_selection.data()['id'], False)
+        elif action == "remove_item":
+            pmc.remove_transform(item.data()['id'])
+            item.parent().removeRow(item.row())
+        elif action == "toggle_activate_item":
+            if item.data()['active']:
+                pmc.set_active(item.data()['id'], False)
+            else:
+                pmc.set_active(item.data()['id'], True)
+
+            self.init_cnt_actv = len(pmc.get_active_ids())
+            self.progressBar.setValue(100)
         else:
             return
 
@@ -134,6 +186,7 @@ class CreateWidget(QWidget):
         super(CreateWidget, self).__init__()
 
         self.parent = parent
+        self.type_ = None
 
         load_ui('create.ui', self)
         self.setObjectName('CreateWidget')
@@ -148,6 +201,28 @@ class CreateWidget(QWidget):
 
         self.typeBox.currentIndexChanged.connect(self._on_type_index_changed)
         self.patternBox.currentIndexChanged.connect(self._on_pattern_index_changed)
+
+        for w in self.linearWidget.findChildren(QLineEdit):
+            w.textChanged.connect(self._on_text_changed)
+
+        for w in self.rectangularWidget.findChildren(QLineEdit):
+            w.textChanged.connect(self._on_text_changed)
+
+    def _on_text_changed(self):
+        les = self.focusWidget().parentWidget().findChildren(QLineEdit)
+
+        count = 0
+        for le in les:
+            if not len(le.text()) == 0:
+                count += 1
+
+        if count > 1:
+            for le in les:
+                if len(le.text()) == 0:
+                    le.setEnabled(False)
+        else:
+            for le in les:
+                le.setEnabled(True)
 
     def _on_type_index_changed(self):
         wdgs = [
@@ -191,7 +266,17 @@ class CreateWidget(QWidget):
         self.adjustSize()
 
     def _on_accepted(self):
-        pmc.create_transform(self.nameText.text(), self.parent.data()['id'])
+
+        if self.typeBox.currentText() == 'Transform':
+            pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
+        elif self.typeBox.currentText() == 'Pattern':
+
+            if self.patternBox.currentText() == 'Linear':
+                args = [str(self.numPointsText.text()), str(self.stepSizeText.text()), str(self.lengthText.text())]
+                pmc.create_linear_pattern(self.parent.data()['id'], *args)
+            if self.patternBox.currentText() == 'Rectangular':
+                args = [str(self.numPointsText_2.text()), str(self.stepSizesText.text()), str(self.lengthsText.text())]
+                pmc.create_rectangular_pattern(self.parent.data()['id'], *args)
 
         self.tfCreated.emit()
         self._on_rejected()
@@ -215,7 +300,6 @@ class TreeItemModel(QStandardItemModel):
         super(TreeItemModel, self).__init__()
 
         self.tree = {}
-        self.items = {}
         self.params = {
             'ids': {},
             'ref_frames': {},
@@ -258,7 +342,6 @@ class TreeItemModel(QStandardItemModel):
 
             if not child_item:
                 child_item = QStandardItem()
-                self.items[self.params['ids'][child]] = child_item
                 parent.appendRow(child_item)
 
             child_item.setText(child)
@@ -272,14 +355,32 @@ class TreeItemModel(QStandardItemModel):
                     'rotation': self.params['rotation'][child]
                 })
             child_item.setEditable(False)
-
-            if self.params['active'][child]:
-                child_item.setForeground(QBrush(QColor(Qt.green)))
-            else:
-                child_item.setForeground(QBrush(QColor(Qt.black)))
+            self._assign_item_color(child_item)
 
             if tree[child]:
                 self._update_model(tree[child], child_item)
+
+    def _assign_item_color(self, item):
+        cur_tf_id = pmc.get_current_tf_id()
+
+        def set_italic(it):
+            f = item.font()
+            f.setItalic(it)
+            item.setFont(f)
+
+        if cur_tf_id == item.data()['id']:
+            if not item.font().italic():
+                set_italic(True)
+        else:
+            if item.font().italic():
+                set_italic(False)
+
+        if self.params['active'][item.text()]:
+            color = Qt.white
+        else:
+            color = Qt.gray
+
+        item.setForeground(QBrush(QColor(color)))
 
 
 class TableItemModel(QStandardItemModel):
