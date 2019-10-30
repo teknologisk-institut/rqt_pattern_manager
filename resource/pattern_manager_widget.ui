@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>499</width>
-    <height>789</height>
+    <height>689</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,7 +19,7 @@
   <property name="minimumSize">
    <size>
     <width>499</width>
-    <height>789</height>
+    <height>689</height>
    </size>
   </property>
   <property name="contextMenuPolicy">
@@ -39,12 +39,11 @@
    <string notr="true">* {
 	font: &quot;Lato&quot;;
 }
-
 /*
 QPushButton {
 	color: white;
 	background-color: #7d7d7d;
-	border: none;
+	border-bottom: 1px solid black;
 	height: 27px;
 	width: 85px;
 }
@@ -66,6 +65,22 @@ QTreeView::item:selected {
 	background-color: #383838;
 	border-left: 1px solid rgb(237, 26, 59);
 	color: white;
+}
+
+QTreeView::branch:has-siblings:!adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-vline.png) 0;
+}
+
+QTreeView::branch:has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-more.png) 0;
+}
+
+QTreeView::branch:!has-children:!has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+}
+
+QTreeView::branch:has-children:!has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
 }
 
 QTableView {
@@ -106,14 +121,31 @@ QProgressBar {
 QProgressBar::chunk {
 	background-color: rgb(237, 26, 59);
 }
+
+QLabel {
+	color: white;
+}
+
+QMenu {
+	background-color: #565656;
+}
+
+QMenu::item {
+	color: white;
+	background-color: #565656;
+}
+
+QMenu::item:selected {
+	background-color: #5a8ab4;
+}
 */
 
-/*** ALTERNATIVE STYLE (LITERALLY) ***/
+/*** ALTERNATIVE STYLE (LITERALLY!) ***/
 
 QPushButton {
 	color: white;
 	background-color: rgb(254, 137, 190);
-	border: none;
+	border-bottom: 1px solid rgb(68, 46, 117);
 	height: 27px;
 	width: 85px;
 }
@@ -124,17 +156,32 @@ QPushButton:hover {
 
 QTreeView {
 	background-color: rgb(24, 1, 74);
-	border: none;
-}
-
-QTreeView::branch {
-	background-color: rgb(24, 1, 74);
 }
 
 QTreeView::item:selected {
 	background-color: rgb(68, 46, 117);
 	border-left: 1px solid rgb(254, 137, 190);
 	color: rgb(254, 137, 190);
+}
+
+QTreeView::branch {
+	background-color: rgb(24, 1, 74);
+}
+
+QTreeView::branch:has-siblings:!adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-vline.png) 0;
+}
+
+QTreeView::branch:has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-more.png) 0;
+}
+
+QTreeView::branch:!has-children:!has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+}
+
+QTreeView::branch:has-children:!has-siblings:adjoins-item {
+    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
 }
 
 QTableView {
@@ -180,6 +227,23 @@ QProgressBar {
 QProgressBar::chunk {
 	background-color: rgb(139, 195, 255); 
 }
+
+QLabel {
+	color: white;
+}
+
+QMenu {
+	background-color: rgb(166, 119, 205);
+}
+
+QMenu::item {
+	color: white;
+	background-color: rgb(166, 119, 205);
+}
+
+QMenu::item:selected {
+	background-color: rgb(192, 154, 224);
+}
 </string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -212,7 +276,7 @@ QProgressBar::chunk {
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>500</height>
+          <height>400</height>
          </size>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_8">
@@ -250,6 +314,21 @@ QProgressBar::chunk {
              <property name="frameShadow">
               <enum>QFrame::Plain</enum>
              </property>
+             <property name="rootIsDecorated">
+              <bool>false</bool>
+             </property>
+             <property name="uniformRowHeights">
+              <bool>true</bool>
+             </property>
+             <property name="itemsExpandable">
+              <bool>false</bool>
+             </property>
+             <property name="expandsOnDoubleClick">
+              <bool>false</bool>
+             </property>
+             <attribute name="headerVisible">
+              <bool>false</bool>
+             </attribute>
             </widget>
            </item>
            <item>
@@ -273,6 +352,13 @@ QProgressBar::chunk {
                </property>
                <property name="flat">
                 <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="refreshButton">
+               <property name="text">
+                <string>Refresh</string>
                </property>
               </widget>
              </item>
@@ -426,7 +512,7 @@ QProgressBar::chunk {
               </property>
               <property name="icon">
                <iconset>
-                <normaloff>../../../../../Pictures/blue_dolphin2.png</normaloff>../../../../../Pictures/blue_dolphin2.png</iconset>
+                <normaloff>blue_dolphin2.png</normaloff>blue_dolphin2.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -456,7 +542,7 @@ QProgressBar::chunk {
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>27</height>
+                <height>35</height>
                </size>
               </property>
               <property name="value">
@@ -626,7 +712,7 @@ QProgressBar::chunk {
        </spacer>
       </item>
       <item>
-       <widget class="QWidget" name="" native="true">
+       <widget class="QWidget" name="widget" native="true">
         <property name="minimumSize">
          <size>
           <width>481</width>
@@ -635,7 +721,7 @@ QProgressBar::chunk {
         </property>
         <property name="maximumSize">
          <size>
-          <width>481</width>
+          <width>16777215</width>
           <height>53</height>
          </size>
         </property>
@@ -698,7 +784,7 @@ QProgressBar::chunk {
            <property name="font">
             <font>
              <family>Lato</family>
-             <pointsize>10</pointsize>
+             <pointsize>9</pointsize>
              <weight>50</weight>
              <italic>false</italic>
              <bold>false</bold>

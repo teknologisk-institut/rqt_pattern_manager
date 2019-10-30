@@ -38,7 +38,7 @@ class MainWidget(QWidget):
 
         load_ui('pattern_manager_widget.ui', self)
         self.setObjectName('PatternManagerWidget')
-        self.setWindowIcon(QIcon('resource_dti_logo_small.png'))
+        self.setBaseSize(self.minimumSize())
 
         self.tree_model = TreeItemModel()
         self.treeView.setModel(self.tree_model)
@@ -57,7 +57,9 @@ class MainWidget(QWidget):
 
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self._context_menu)
+        self.treeView.doubleClicked.connect(self._on_tree_double_clicked)
 
+        self.refreshButton.clicked.connect(self._on_refresh_clicked)
         self.quitButton.clicked.connect(QApplication.quit)
         self.stepButton.clicked.connect(self._on_iterate)
         self.activeButton.clicked.connect(lambda: self._call_action(
@@ -77,6 +79,14 @@ class MainWidget(QWidget):
         self.init_cnt_actv = len(pmc.get_active_ids())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
+
+    def _on_refresh_clicked(self):
+        self.tree_model.update()
+        self.treeView.expandAll()
+
+    def _on_tree_double_clicked(self):
+        item = self.get_cur_selection(self.treeView)
+        self._call_action('toggle_activate_item', item)
 
     def _on_reset_all(self):
         actv_ids = pmc.get_active_ids()
@@ -121,7 +131,7 @@ class MainWidget(QWidget):
     def _context_menu(self, position):
         cur_selection = self.get_cur_selection(self.treeView)
 
-        menu = QMenu()
+        menu = QMenu(self)
         ac_new_tf = menu.addAction("Add...")
         ac_remove = menu.addAction("Remove")
 
@@ -140,6 +150,8 @@ class MainWidget(QWidget):
             return
 
     def _call_action(self, action, item):
+        param_changed = False
+        node_changed = False
 
         if not item:
             return
@@ -155,6 +167,8 @@ class MainWidget(QWidget):
         elif action == "remove_item":
             pmc.remove_transform(item.data()['id'])
             item.parent().removeRow(item.row())
+
+            node_changed = True
         elif action == "toggle_activate_item":
             if item.data()['active']:
                 pmc.set_active(item.data()['id'], False)
@@ -163,11 +177,19 @@ class MainWidget(QWidget):
 
             self.init_cnt_actv = len(pmc.get_active_ids())
             self.progressBar.setValue(100)
+
+            node_changed = True
+            param_changed = True
         else:
             return
 
-        self.tree_model.update()
-        self.treeView.expandAll()
+        if node_changed:
+            self.tree_model.update()
+            self.treeView.expandAll()
+
+        if param_changed:
+            self.param_model.update(item)
+            self.parameterView.resizeColumnsToContents()
 
     @staticmethod
     def get_cur_selection(view):
@@ -191,6 +213,7 @@ class CreateWidget(QWidget):
         load_ui('create.ui', self)
         self.setObjectName('CreateWidget')
         self.setAttribute(Qt.WA_DeleteOnClose, True)
+        self.parentText.setText(parent.text())
 
         self.patternWidget.close()
 
@@ -272,11 +295,23 @@ class CreateWidget(QWidget):
         elif self.typeBox.currentText() == 'Pattern':
 
             if self.patternBox.currentText() == 'Linear':
-                args = [str(self.numPointsText.text()), str(self.stepSizeText.text()), str(self.lengthText.text())]
-                pmc.create_linear_pattern(self.parent.data()['id'], *args)
-            if self.patternBox.currentText() == 'Rectangular':
-                args = [str(self.numPointsText_2.text()), str(self.stepSizesText.text()), str(self.lengthsText.text())]
-                pmc.create_rectangular_pattern(self.parent.data()['id'], *args)
+                args = [
+                    str(self.nameText.text()),
+                    str(self.numPointsText.text()),
+                    str(self.stepSizeText.text()),
+                    str(self.lengthText.text()),
+                    self.parent.data()['id']
+                ]
+                pmc.create_linear_pattern(*args)
+            elif self.patternBox.currentText() == 'Rectangular':
+                args = [
+                    str(self.nameText.text()),
+                    str(self.numPointsText_2.text()),
+                    str(self.stepSizesText.text()),
+                    str(self.lengthsText.text()),
+                    self.parent.data()['id']
+                ]
+                pmc.create_rectangular_pattern(*args)
 
         self.tfCreated.emit()
         self._on_rejected()
