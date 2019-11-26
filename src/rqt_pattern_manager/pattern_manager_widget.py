@@ -17,6 +17,9 @@
 # Author: Mads Vainoe Baatrup
 
 import pattern_manager_client as pmc
+import pattern_manager.msg as pm_msg
+import string
+import resources
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -24,8 +27,11 @@ from PyQt5.QtWidgets import \
     QMenu, \
     QApplication, \
     QLineEdit, \
-    QCheckBox
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPainter, QPen, QIcon
+    QCheckBox, \
+    QLayout, \
+    QListWidget, \
+    QListWidgetItem
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPainter, QPen, QIcon, QPixmap
 from PyQt5.QtCore import pyqtSignal, Qt, QRect
 from .util import *
 from pprint import pprint
@@ -165,8 +171,9 @@ class MainWidget(QWidget):
 
             return
         elif action == "remove_item":
-            pmc.remove_transform(item.data()['id'])
-            item.parent().removeRow(item.row())
+            if item.parent():
+                pmc.remove_transform(item.data()['id'])
+                item.parent().removeRow(item.row())
 
             node_changed = True
         elif action == "toggle_activate_item":
@@ -217,7 +224,10 @@ class CreateWidget(QWidget):
 
         self.patternWidget.close()
 
-        self.adjustSize()
+        self.layout().setSizeConstraint(QLayout.SetFixedSize)
+
+        self.scatter_model = QStandardItemModel(self.patternWidget)
+        self.scatterListView.setModel(self.scatter_model)
 
         self.dialogButton.accepted.connect(self._on_accepted)
         self.dialogButton.rejected.connect(self._on_rejected)
@@ -231,40 +241,50 @@ class CreateWidget(QWidget):
         for w in self.rectangularWidget.findChildren(QLineEdit):
             w.textChanged.connect(self._on_text_changed)
 
+        self.addPointButton.clicked.connect(self._on_add_scatter_point)
+        self.removePointButton.clicked.connect(self._on_remove_scatter_point)
+
+    def _on_add_scatter_point(self):
+        point = [float(self.pointXText.text()), float(self.pointYText.text()), float(self.pointZText.text())]
+
+        item = QStandardItem(str(point))
+        self.scatter_model.appendRow(item)
+
+    def _on_remove_scatter_point(self):
+        index = self.scatterListView.selectionModel().currentIndex()
+        cur_selection = self.scatter_model.itemFromIndex(index)
+
+        if not cur_selection:
+            return
+
+        self.scatter_model.removeRow(cur_selection.row())
+
     def _on_text_changed(self):
-        les = self.focusWidget().parentWidget().findChildren(QLineEdit)
-
-        count = 0
-        for le in les:
-            if not len(le.text()) == 0:
-                count += 1
-
-        if count > 1:
-            for le in les:
-                if len(le.text()) == 0:
-                    le.setEnabled(False)
-        else:
-            for le in les:
-                le.setEnabled(True)
+        pass
+        # les = self.focusWidget().parentWidget().findChildren(QLineEdit)
+        #
+        # count = 0
+        # for le in les:
+        #     if not len(le.text()) == 0:
+        #         count += 1
+        #
+        # if count > 1:
+        #     for le in les:
+        #         if len(le.text()) == 0:
+        #             le.setText('0')
+        #             # le.setEnabled(False)
+        # else:
+        #     for le in les:
+        #         le.setEnabled(True)
 
     def _on_type_index_changed(self):
-        wdgs = [
-            self.patternWidget,
-            self.transformWidget
-        ]
+        self.patternWidget.close()
 
-        for w in wdgs:
-            w.close()
-
-        if self.typeBox.currentText() == 'Transform':
-            self.transformWidget.show()
-        elif self.typeBox.currentText() == 'Pattern':
+        if self.typeBox.currentText() == 'Pattern':
             self.patternWidget.show()
             self._on_pattern_index_changed()
 
             return
-
-        self.adjustSize()
 
     def _on_pattern_index_changed(self):
         wdgs = [
@@ -286,32 +306,12 @@ class CreateWidget(QWidget):
         elif self.patternBox.currentText() == 'Scatter':
             self.scatterWidget.show()
 
-        self.adjustSize()
-
     def _on_accepted(self):
 
         if self.typeBox.currentText() == 'Transform':
             pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
         elif self.typeBox.currentText() == 'Pattern':
-
-            if self.patternBox.currentText() == 'Linear':
-                args = [
-                    str(self.nameText.text()),
-                    str(self.numPointsText.text()),
-                    str(self.stepSizeText.text()),
-                    str(self.lengthText.text()),
-                    self.parent.data()['id']
-                ]
-                pmc.create_linear_pattern(*args)
-            elif self.patternBox.currentText() == 'Rectangular':
-                args = [
-                    str(self.nameText.text()),
-                    str(self.numPointsText_2.text()),
-                    str(self.stepSizesText.text()),
-                    str(self.lengthsText.text()),
-                    self.parent.data()['id']
-                ]
-                pmc.create_rectangular_pattern(*args)
+            self._create_pattern(self.patternBox.currentText())
 
         self.tfCreated.emit()
         self._on_rejected()
@@ -328,6 +328,112 @@ class CreateWidget(QWidget):
 
         self.close()
 
+    def _create_pattern(self, type_):
+        in_ = [
+            str(self.nameText.text()),
+            self.parent.data()['id'],
+            [
+                self.xText,
+                self.yText,
+                self.zText,
+                self.qxText,
+                self.qyText,
+                self.qzText,
+                self.qwText
+            ]
+        ]
+
+        for le in in_[2]:
+            self._handle_empty_line(le)
+
+        args = [
+            in_[0],
+            in_[1],
+            [
+                float(in_[2][0].text()),
+                float(in_[2][1].text()),
+                float(in_[2][2].text())
+            ],
+            [
+                float(in_[2][3].text()),
+                float(in_[2][4].text()),
+                float(in_[2][5].text()),
+                float(in_[2][6].text())
+            ]
+        ]
+
+        if type_ == 'Linear':
+            in_ = [
+                self.numPointsText,
+                self.stepSizeText,
+                self.lengthText
+            ]
+
+            for le in in_:
+                self._handle_empty_line(le)
+
+            args.extend([int(in_[0].text()), float(in_[1].text()), float(in_[2].text())])
+            pmc.create_linear_pattern(*args)
+        elif type_ == 'Rectangular':
+            in_ = [
+                self.numPointsXText,
+                self.numPointsYText,
+                self.stepSizesXText,
+                self.stepSizesYText,
+                self.lengthsXText,
+                self.lengthsYText
+            ]
+
+            for le in in_:
+                self._handle_empty_line(le)
+
+            args.extend([
+                [int(in_[0].text()), int(in_[1].text())],
+                [float(in_[2].text()), float(in_[3].text())],
+                [float(in_[4].text()), float(in_[5].text())]
+            ])
+
+            pmc.create_rectangular_pattern(*args)
+        elif type_ == 'Scatter':
+            points = []
+            for i in range(self.scatter_model.rowCount()):
+                str_point_lst = list_string_to_list(str(self.scatter_model.item(i).text()))
+
+                point = pm_msg.Point()
+                for s in str_point_lst:
+                    point.point.append(float(s))
+
+                points.append(point)
+
+            args.append(points)
+            pmc.create_scatter_pattern(*args)
+        elif type_ == 'Circular':
+            in_ = [
+                self.numPointsText2,
+                self.radiusText,
+                self.angularText
+            ]
+
+            for le in in_:
+                self._handle_empty_line(le)
+
+            args.extend([
+                int(in_[0].text()),
+                float(in_[1].text()),
+                self.tanRotCheck.isChecked(),
+                self.cwCheck.isChecked(),
+                float(in_[2].text())
+            ])
+
+            pmc.create_circular_pattern(*args)
+
+    @staticmethod
+    def _handle_empty_line(line_edit):
+        if line_edit.text():
+            return
+
+        line_edit.setText(line_edit.placeholderText())
+
 
 class TreeItemModel(QStandardItemModel):
 
@@ -340,7 +446,8 @@ class TreeItemModel(QStandardItemModel):
             'ref_frames': {},
             'active': {},
             'translation': {},
-            'rotation': {}
+            'rotation': {},
+            'number': {}
         }
 
         self.update()
@@ -361,8 +468,9 @@ class TreeItemModel(QStandardItemModel):
             params['active'][name] = i.active
             params['translation'][name] = [i.translation.x, i.translation.y, i.translation.z]
             params['rotation'][name] = [i.rotation.x, i.rotation.y, i.rotation.z, i.rotation.w]
+            params['number'][name] = i.number
 
-        self.tree = param_tree_from_nested_lists(nested_param_lists, nodes)
+        self.tree = tree_from_nested_lists(nested_param_lists, nodes)
 
     def _update_model(self, tree=None, parent=None):
 
@@ -379,7 +487,7 @@ class TreeItemModel(QStandardItemModel):
                 child_item = QStandardItem()
                 parent.appendRow(child_item)
 
-            child_item.setText(child)
+            child_item.setText('%s [tf_%s]' % (child, self.params['number'][child]))
             child_item.setData(
                 {
                     'name': child,
@@ -387,7 +495,7 @@ class TreeItemModel(QStandardItemModel):
                     'ref_frame': self.params['ref_frames'][child],
                     'active': self.params['active'][child],
                     'translation': self.params['translation'][child],
-                    'rotation': self.params['rotation'][child]
+                    'rotation': self.params['rotation'][child],
                 })
             child_item.setEditable(False)
             self._assign_item_color(child_item)
@@ -410,7 +518,7 @@ class TreeItemModel(QStandardItemModel):
             if item.font().italic():
                 set_italic(False)
 
-        if self.params['active'][item.text()]:
+        if self.params['active'][item.data()['name']]:
             color = Qt.white
         else:
             color = Qt.gray

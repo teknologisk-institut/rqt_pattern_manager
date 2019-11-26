@@ -20,23 +20,55 @@ import rospy
 import pattern_manager.srv as pm_srv
 import std_srvs.srv as std_srv
 
+from .util import make_pattern_parent_msg
 
-def create_linear_pattern(name, num_points, step_size, length, parent_id):
+
+def create_linear_pattern(name, parent_id, translation, rotation, num_points, step_size, length):
     rospy.wait_for_service('pattern_manager/create_linear_pattern')
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_linear_pattern', pm_srv.CreateLinearPattern)
-        resp = crt_pat(name, num_points, step_size, length, parent_id)
+
+        pparent = make_pattern_parent_msg(name, parent_id, translation, rotation)
+        resp = crt_pat(pparent, num_points, step_size, length)
 
         return resp.success
     except rospy.ServiceException, e:
         print 'Service call failed: %s' % e
 
 
-def create_rectangular_pattern(name, num_points, step_size, length, parent_id):
+def create_rectangular_pattern(name, parent_id, translation, rotation, num_points, step_size, length):
     rospy.wait_for_service('pattern_manager/create_rectangular_pattern')
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_rectangular_pattern', pm_srv.CreateRectangularPattern)
-        resp = crt_pat(name, num_points, step_size, length, parent_id)
+
+        pparent = make_pattern_parent_msg(name, parent_id, translation, rotation)
+        resp = crt_pat(pparent, num_points, step_size, length)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+def create_scatter_pattern(name, parent_id, translation, rotation, points):
+    rospy.wait_for_service('pattern_manager/create_scatter_pattern')
+    try:
+        crt_pat = rospy.ServiceProxy('pattern_manager/create_scatter_pattern', pm_srv.CreateScatterPattern)
+
+        pparent = make_pattern_parent_msg(name, parent_id, translation, rotation)
+        resp = crt_pat(pparent, points)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+def create_circular_pattern(name, parent_id, translation, rotation, num_points, r, tan_rot, cw, angular_section):
+    rospy.wait_for_service('pattern_manager/create_circular_pattern')
+    try:
+        crt_pat = rospy.ServiceProxy('pattern_manager/create_circular_pattern', pm_srv.CreateCircularPattern)
+
+        pparent = make_pattern_parent_msg(name, parent_id, translation, rotation)
+        resp = crt_pat(pparent, num_points, r, tan_rot, cw, angular_section)
 
         return resp.success
     except rospy.ServiceException, e:

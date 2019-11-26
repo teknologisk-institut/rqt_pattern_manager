@@ -19,8 +19,11 @@
 import os
 import rospy
 import rospkg
+import geometry_msgs.msg as gm_msg
+import pattern_manager.msg as pm_msg
+import string
 
-from python_qt_binding import loadUi
+from PyQt5.uic import loadUi
 
 
 def load_ui(file_, widget):
@@ -29,7 +32,7 @@ def load_ui(file_, widget):
     loadUi(ui_file, widget)
 
 
-def param_tree_from_nested_lists(lst, nodes):
+def tree_from_nested_lists(lst, nodes):
     tree = {}
     for i in lst:
         name = i.name
@@ -53,3 +56,27 @@ def find_item_child_by_id(parent, id_):
             return cur_child
 
     return None
+
+
+def list_to_vector3(list_):
+    return gm_msg.Vector3(x=list_[0], y=list_[1], z=list_[2])
+
+
+def list_to_quaternion(list_):
+    return gm_msg.Quaternion(x=list_[0], y=list_[1], z=list_[2], w=list_[3])
+
+
+def list_string_to_list(str_):
+    str_point = str_.translate(string.maketrans('', '', ), "[] ")
+
+    return str_point.split(',')
+
+
+def make_pattern_parent_msg(name, id_, translation, rotation):
+    pparent = pm_msg.PatternParent()
+    pparent.name = name
+    pparent.parent_id = id_
+    pparent.translation = list_to_vector3(translation)
+    pparent.rotation = list_to_quaternion(rotation)
+
+    return pparent

@@ -39,13 +39,17 @@
    <string notr="true">* {
 	font: &quot;Lato&quot;;
 }
-/*
+
 QPushButton {
 	color: white;
 	background-color: #7d7d7d;
 	border-bottom: 1px solid black;
 	height: 27px;
 	width: 85px;
+}
+
+QPushButton#stepButton {
+	image: url(&quot;:/resource/next_button.png&quot;)
 }
 
 QPushButton:hover {
@@ -68,19 +72,19 @@ QTreeView::item:selected {
 }
 
 QTreeView::branch:has-siblings:!adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-vline.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-vline.png&quot;) 0;
 }
 
 QTreeView::branch:has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-more.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-more.png&quot;) 0;
 }
 
 QTreeView::branch:!has-children:!has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-end.png&quot;) 0;
 }
 
 QTreeView::branch:has-children:!has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-end.png&quot;) 0;
 }
 
 QTableView {
@@ -126,6 +130,10 @@ QLabel {
 	color: white;
 }
 
+QLabel#logo {
+	border-image: url(&quot;:/resource/resource_dti_logo_small.png&quot;)
+}
+
 QMenu {
 	background-color: #565656;
 }
@@ -138,16 +146,20 @@ QMenu::item {
 QMenu::item:selected {
 	background-color: #5a8ab4;
 }
-*/
+
 
 /*** ALTERNATIVE STYLE (LITERALLY!) ***/
-
+/*
 QPushButton {
 	color: white;
 	background-color: rgb(254, 137, 190);
 	border-bottom: 1px solid rgb(68, 46, 117);
 	height: 27px;
 	width: 85px;
+}
+
+QPushButton#stepButton {
+	image: url(&quot;:/resource/blue_dolphin2.png&quot;)
 }
 
 QPushButton:hover {
@@ -169,19 +181,19 @@ QTreeView::branch {
 }
 
 QTreeView::branch:has-siblings:!adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-vline.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-vline.png&quot;) 0;
 }
 
 QTreeView::branch:has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-more.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-more.png&quot;) 0;
 }
 
 QTreeView::branch:!has-children:!has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-end.png&quot;) 0;
 }
 
 QTreeView::branch:has-children:!has-siblings:adjoins-item {
-    border-image: url(/home/mvb/Desktop/catkin_ws/src/rqt_pattern_manager/resource/stylesheet-branch-end.png) 0;
+    border-image: url(&quot;:/resource/stylesheet-branch-end.png&quot;) 0;
 }
 
 QTableView {
@@ -232,6 +244,10 @@ QLabel {
 	color: white;
 }
 
+QLabel#logo {
+	border-image: url(&quot;:/resource/resource_dti_logo_small.png&quot;)
+}
+
 QMenu {
 	background-color: rgb(166, 119, 205);
 }
@@ -244,7 +260,7 @@ QMenu::item {
 QMenu::item:selected {
 	background-color: rgb(192, 154, 224);
 }
-</string>
+*/</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_6">
    <property name="spacing">
@@ -510,14 +526,10 @@ QMenu::item:selected {
               <property name="text">
                <string/>
               </property>
-              <property name="icon">
-               <iconset>
-                <normaloff>blue_dolphin2.png</normaloff>blue_dolphin2.png</iconset>
-              </property>
               <property name="iconSize">
                <size>
-                <width>32</width>
-                <height>32</height>
+                <width>24</width>
+                <height>24</height>
                </size>
               </property>
               <property name="autoDefault">
@@ -745,7 +757,13 @@ QMenu::item:selected {
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="label">
+          <widget class="QLabel" name="logo">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>50</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
              <width>50</width>
@@ -754,9 +772,6 @@ QMenu::item:selected {
            </property>
            <property name="text">
             <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap>resource_dti_logo_small.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -780,7 +795,7 @@ QMenu::item:selected {
           </spacer>
          </item>
          <item>
-          <widget class="QLabel" name="label_2">
+          <widget class="QLabel" name="copyright">
            <property name="font">
             <font>
              <family>Lato</family>

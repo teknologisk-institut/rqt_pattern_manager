@@ -7,6 +7,8 @@ project(rqt_pattern_manager)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   rqt_gui_py
+  geometry_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions

@@ -1,7 +1,10 @@
 <RCC>
-    <qresource prefix="/images">
+    <qresource prefix="/resource">
         <file>stylesheet-vline.png</file>
         <file>stylesheet-branch-end.png</file>
         <file>stylesheet-branch-more.png</file>
+        <file>resource_dti_logo_small.png</file>
+        <file>next_button.png</file>
+        <file>blue_dolphin2.png</file>
     </qresource>
 </RCC>
