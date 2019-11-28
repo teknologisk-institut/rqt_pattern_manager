@@ -23,6 +23,39 @@ import std_srvs.srv as std_srv
 from .util import make_pattern_parent_msg
 
 
+def set_transform_parent(id, parent_id):
+    rospy.wait_for_service('pattern_manager/set_transform_parent')
+    try:
+        set_par = rospy.ServiceProxy('pattern_manager/set_transform_parent', pm_srv.SetParent)
+        resp = set_par(id, parent_id)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+def get_transform_ids():
+    rospy.wait_for_service('pattern_manager/get_transform_ids')
+    try:
+        get_ids = rospy.ServiceProxy('pattern_manager/get_transform_ids', pm_srv.ActiveIds)
+        resp = get_ids()
+
+        return resp.ids
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+def set_iteration_order(parent_id, order):
+    rospy.wait_for_service('pattern_manager/set_iteration_order')
+    try:
+        set_order = rospy.ServiceProxy('pattern_manager/set_iteration_order', pm_srv.SetIterationOrder)
+        resp = set_order(parent_id, order)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
 def create_linear_pattern(name, parent_id, translation, rotation, num_points, step_size, length):
     rospy.wait_for_service('pattern_manager/create_linear_pattern')
     try:
@@ -119,13 +152,13 @@ def update_transform_var(id_, var, val):
         print 'Service call failed: %s' % e
 
 
-def get_transforms():
-    rospy.wait_for_service('pattern_manager/get_transforms')
+def get_transform(id_):
+    rospy.wait_for_service('pattern_manager/get_transform')
     try:
-        get_tfs = rospy.ServiceProxy('pattern_manager/get_transforms', pm_srv.GroupTree)
-        resp = get_tfs()
+        get_tf = rospy.ServiceProxy('pattern_manager/get_transform', pm_srv.GetTransformParams)
+        resp = get_tf(id_)
 
-        return resp.group_deps
+        return resp.params
     except rospy.ServiceException, e:
         print 'Service call failed: %s' % e
 

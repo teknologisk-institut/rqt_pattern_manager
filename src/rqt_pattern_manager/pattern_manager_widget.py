@@ -17,9 +17,8 @@
 # Author: Mads Vainoe Baatrup
 
 import pattern_manager_client as pmc
-import pattern_manager.msg as pm_msg
-import string
 import resources
+import math
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -29,12 +28,250 @@ from PyQt5.QtWidgets import \
     QLineEdit, \
     QCheckBox, \
     QLayout, \
-    QListWidget, \
-    QListWidgetItem
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPainter, QPen, QIcon, QPixmap
-from PyQt5.QtCore import pyqtSignal, Qt, QRect
+    QTreeView, \
+    QAbstractItemView, \
+    QTableView, \
+    QSpacerItem, \
+    QProxyStyle, \
+    QStyleOption
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen
+from PyQt5.QtCore import pyqtSignal, Qt, QAbstractListModel, QCoreApplication
 from .util import *
-from pprint import pprint
+from collections import OrderedDict
+
+
+class CustomTreeItemModel(QStandardItemModel):
+
+    updated = pyqtSignal()
+
+    def __init__(self):
+        super(CustomTreeItemModel, self).__init__()
+
+        self.update()
+
+    def update(self):
+        self.clear()
+
+        ids = pmc.get_transform_ids()
+
+        # create nodes from ids
+        nodes = []
+        for i in ids:
+            node = pmc.get_transform(i)
+            nodes.append(node)
+
+        # create items from nodes
+        items = {}
+        for n in nodes:
+            item = QStandardItem('%s [tf_%s]' % (n.name, n.number))
+            params = {
+                'name': n.name,
+                'id': n.id,
+                'ref_frame': n.ref_frame,
+                'active': n.active,
+                'translation': [
+                    n.translation.x,
+                    n.translation.y,
+                    n.translation.z
+                ],
+                'rotation': [
+                    n.rotation.x,
+                    n.rotation.y,
+                    n.rotation.z,
+                    n.rotation.w
+                ]
+            }
+            item.setData(params)
+            item.setEditable(False)
+            self._set_item_font(item)
+            self._set_item_color(item)
+
+            items[n.id] = item
+
+        # assign ancestry of items
+        for n in nodes:
+            item = items[n.id]
+            par_item = items[n.parent_id]
+
+            if item.data()['id'] == par_item.data()['id']:
+                self.invisibleRootItem().appendRow(item)
+            elif par_item:
+                par_item.appendRow(item)
+
+        self.updated.emit()
+
+    @staticmethod
+    def _set_item_font(item):
+        cur_tf_id = pmc.get_current_tf_id()
+        f = item.font()
+
+        if cur_tf_id == item.data()['id']:
+
+            if not item.font().italic():
+                f.setItalic(True)
+        else:
+
+            if item.font().italic():
+                f.setItalic(True)
+
+        item.setFont(f)
+
+    @staticmethod
+    def _set_item_color(item):
+
+        if item.data()['active']:
+            color = Qt.white
+        else:
+            color = Qt.gray
+
+        item.setForeground(QBrush(QColor(color)))
+
+
+class CustomTableItemModel(QStandardItemModel):
+
+    def __init__(self):
+        super(CustomTableItemModel, self).__init__()
+
+        self.locked = ['active']
+
+    def update(self, parent):
+        self.clear()
+        self.setColumnCount(1)
+
+        parent_tf = pmc.get_transform(parent.data()['id'])
+
+        if not parent_tf:
+            return
+
+        dict_ = OrderedDict()
+        dict_['name'] = parent_tf.name
+        dict_['ref_frame'] = parent_tf.ref_frame
+        dict_['active'] = parent_tf.active
+        dict_['translation'] = [parent_tf.translation.x, parent_tf.translation.y, parent_tf.translation.z]
+        dict_['rotation'] = [parent_tf.rotation.x, parent_tf.rotation.y, parent_tf.rotation.z, parent_tf.rotation.w]
+
+        i = 0
+        for k, v in dict_.items():
+            h = QStandardItem(k)
+            t = QStandardItem(str(v))
+
+            t.setData(parent_tf.id)
+
+            editable = True if k not in self.locked else False
+            t.setEditable(editable)
+
+            self.setVerticalHeaderItem(i, h)
+            self.setItem(i, 0, t)
+
+            i += 1
+
+
+class CustomProxyStyle(QProxyStyle):
+
+    def __init__(self):
+        super(CustomProxyStyle, self).__init__()
+
+    def drawPrimitive(self, element, option, painter, widget=None):
+
+        if element == self.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
+            painter.setPen(QPen(QColor(Qt.white)))
+
+        super(CustomProxyStyle, self).drawPrimitive(element, option, painter, widget)
+
+
+class CustomTreeView(QTreeView):
+
+    def __init__(self, parent):
+        super(CustomTreeView, self).__init__(parent)
+
+        self.parent = parent
+        self.order = []
+
+        self.setStyle(CustomProxyStyle())
+        self.setDragEnabled(True)
+        self.setDragDropMode(QAbstractItemView.InternalMove)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setHeaderHidden(True)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+
+        model = CustomTreeItemModel()
+        self.setModel(model)
+
+        model.updated.connect(lambda: self.expandToDepth(-1))
+        self.customContextMenuRequested.connect(self._context_menu)
+
+    def _context_menu(self, pos):
+        cur_selection = get_current_selection(self)
+
+        if not cur_selection:
+            return
+
+        menu = QMenu(self)
+        ac_new_tf = menu.addAction("Add...")
+        ac_remove = menu.addAction("Remove")
+
+        menu.addSeparator()
+
+        ac_set_actv = menu.addAction("Activate")
+        ac_set_deactv = menu.addAction("Deactivate")
+
+        action = menu.exec_(self.mapToGlobal(pos))
+        if action == ac_new_tf:
+            self.parent.call_action("open_create_widget", cur_selection)
+        elif action == ac_remove:
+            self.parent.call_action("remove_item", cur_selection)
+        elif action == ac_set_actv:
+            self.parent.call_action("activate_item", cur_selection)
+        elif action == ac_set_deactv:
+            self.parent.call_action("deactive_item", cur_selection)
+        else:
+            return
+
+    def dropEvent(self, e):
+        item = get_current_selection(self)
+        parent = item.parent()
+
+        if not parent:
+            return
+
+        super(CustomTreeView, self).dropEvent(e)
+
+        order = []
+        for i in range(parent.rowCount()):
+
+            if i == item.row():
+                continue
+
+            child = parent.child(i)
+            id_ = child.data()['id']
+
+            order.append(id_)
+
+        pmc.set_iteration_order(parent.data()['id'], order)
+
+
+class CustomTableView(QTableView):
+
+    def __init__(self, parent):
+        super(CustomTableView, self).__init__(parent)
+
+        self.parent = parent
+        self.horizontalHeader().hide()
+
+        model = CustomTableItemModel()
+        self.setModel(model)
+
+        model.dataChanged.connect(self._on_data_changed)
+
+    def _on_data_changed(self):
+
+        if self.selectionModel().hasSelection():
+            index = self.selectionModel().currentIndex()
+            item = self.model().itemFromIndex(index)
+            item_header = self.model().verticalHeaderItem(item.row()).text()
+
+            pmc.update_transform_var(item.data()['id'], str(item_header), str(item.text()))
 
 
 class MainWidget(QWidget):
@@ -46,53 +283,49 @@ class MainWidget(QWidget):
         self.setObjectName('PatternManagerWidget')
         self.setBaseSize(self.minimumSize())
 
-        self.tree_model = TreeItemModel()
-        self.treeView.setModel(self.tree_model)
-        self.treeView.setHeaderHidden(True)
-        self.treeView.expandAll()
+        self.tree_view = CustomTreeView(self)
+        self.param_view = CustomTableView(self)
 
-        self.param_model = TableItemModel()
-        self.parameterView.setModel(self.param_model)
-        self.parameterView.horizontalHeader().hide()
+        self.containerWidget.layout().addWidget(self.topWidget)
+        self.containerWidget.layout().addWidget(self.progressWidget)
+        self.containerWidget.layout().addItem(QSpacerItem(10, 10))
+        self.containerWidget.layout().addWidget(self.bottomWidget)
+        self.containerWidget.layout().addItem(QSpacerItem(20, 20))
+        self.containerWidget.layout().addWidget(self.endWidget)
 
-        selection_model = self.treeView.selectionModel()
-        selection_model.selectionChanged.connect(lambda: self.param_model.update(self.get_cur_selection(self.treeView)))
-        selection_model.selectionChanged.connect(self.parameterView.resizeColumnsToContents)
+        self.topWidget.layout().addWidget(self.tree_view)
+        self.topWidget.layout().addWidget(self.topButtonWidget)
+        self.bottomWidget.layout().addWidget(self.param_view)
+        self.bottomWidget.layout().addWidget(self.bottomButtonWidget)
 
-        self.param_model.dataChanged.connect(self._on_param_data_changed)
+        self.tree_view.selectionModel().selectionChanged.connect(
+            lambda: self.param_view.model().update(get_current_selection(self.tree_view)))
+        self.tree_view.selectionModel().selectionChanged.connect(self.param_view.resizeColumnsToContents)
 
-        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.treeView.customContextMenuRequested.connect(self._context_menu)
-        self.treeView.doubleClicked.connect(self._on_tree_double_clicked)
-
-        self.refreshButton.clicked.connect(self._on_refresh_clicked)
         self.quitButton.clicked.connect(QApplication.quit)
         self.stepButton.clicked.connect(self._on_iterate)
-        self.activeButton.clicked.connect(lambda: self._call_action(
-            "toggle_activate_item",
-            self.get_cur_selection(self.treeView)
+        self.activeButton.clicked.connect(lambda: self.call_action(
+            "activate_item",
+            get_current_selection(self.tree_view)
         ))
-        self.addButton.clicked.connect(lambda: self._call_action(
+        self.deactivateButton.clicked.connect(lambda: self.call_action(
+            "deactivate_item",
+            get_current_selection(self.tree_view)
+        ))
+        self.addButton.clicked.connect(lambda: self.call_action(
             "open_create_widget",
-            self.get_cur_selection(self.treeView)
+            get_current_selection(self.tree_view)
         ))
-        self.removeButton.clicked.connect(lambda: self._call_action(
+        self.removeButton.clicked.connect(lambda: self.call_action(
             "remove_item",
-            self.get_cur_selection(self.treeView)
+            get_current_selection(self.tree_view)
         ))
         self.resetButton.clicked.connect(self._on_reset_all)
+        self.expandButton.clicked.connect(lambda: self.tree_view.expandToDepth(-1))
 
         self.init_cnt_actv = len(pmc.get_active_ids())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
-
-    def _on_refresh_clicked(self):
-        self.tree_model.update()
-        self.treeView.expandAll()
-
-    def _on_tree_double_clicked(self):
-        item = self.get_cur_selection(self.treeView)
-        self._call_action('toggle_activate_item', item)
 
     def _on_reset_all(self):
         actv_ids = pmc.get_active_ids()
@@ -101,7 +334,7 @@ class MainWidget(QWidget):
             pmc.set_active(id_, False)
 
         self.progressBar.setValue(0)
-        self.tree_model.update()
+        self.tree_view.model().update()
 
     def _on_iterate(self):
         cnt_actv = len(pmc.get_active_ids())
@@ -113,98 +346,41 @@ class MainWidget(QWidget):
             self.progressBar.setValue(int((float(cnt_actv) - 1.0) / float(self.init_cnt_actv) * 100.0))
 
         pmc.iterate()
+        self.tree_view.model().update()
 
-        self.tree_model.update()
-
-    def _on_param_data_changed(self):
-        selection_model = self.parameterView.selectionModel()
-
-        if selection_model.hasSelection():
-            self._update_transform_variable()
-            self.tree_model.update()
-            self.treeView.expandAll()
-
-    def _update_transform_variable(self):
-        table_item = self.get_cur_selection(self.parameterView)
-        tree_item = self.get_cur_selection(self.treeView)
-
-        if not table_item or not tree_item:
-            return
-
-        item_header = self.param_model.verticalHeaderItem(table_item.row()).text()
-        pmc.update_transform_var(tree_item.data()['id'], str(item_header), str(table_item.text()))
-
-    def _context_menu(self, position):
-        cur_selection = self.get_cur_selection(self.treeView)
-
-        menu = QMenu(self)
-        ac_new_tf = menu.addAction("Add...")
-        ac_remove = menu.addAction("Remove")
-
-        menu.addSeparator()
-
-        ac_set_actv = menu.addAction("Active")
-
-        action = menu.exec_(self.treeView.mapToGlobal(position))
-        if action == ac_new_tf:
-            self._call_action("open_create_widget", cur_selection)
-        elif action == ac_remove:
-            self._call_action("remove_item", cur_selection)
-        elif action == ac_set_actv:
-            self._call_action("toggle_activate_item", cur_selection)
-        else:
-            return
-
-    def _call_action(self, action, item):
-        param_changed = False
-        node_changed = False
+    def call_action(self, action, item):
 
         if not item:
             return
 
         if action == "open_create_widget":
-            self.wdg = CreateWidget(item)
-            self.wdg.show()
+            self.create_widget = CreateWidget(get_current_selection(self.tree_view))
+            self.create_widget.show()
 
-            self.wdg.tfCreated.connect(self.tree_model.update)
-            self.wdg.tfCreated.connect(self.treeView.expandAll)
+            self.create_widget.tfCreated.connect(self.tree_view.model().update)
+            self.create_widget.tfCreated.connect(lambda: self.tree_view.expandToDepth(-1))
 
             return
         elif action == "remove_item":
             if item.parent():
                 pmc.remove_transform(item.data()['id'])
                 item.parent().removeRow(item.row())
-
-            node_changed = True
-        elif action == "toggle_activate_item":
-            if item.data()['active']:
-                pmc.set_active(item.data()['id'], False)
-            else:
-                pmc.set_active(item.data()['id'], True)
+        elif action == "activate_item":
+            pmc.set_active(item.data()['id'], True)
 
             self.init_cnt_actv = len(pmc.get_active_ids())
             self.progressBar.setValue(100)
+        elif action == "deactivate_item":
+            pmc.set_active(item.data()['id'], False)
 
-            node_changed = True
-            param_changed = True
+            self.init_cnt_actv = len(pmc.get_active_ids())
+            if self.init_cnt_actv == 0:
+                self.progressBar.setValue(0)
         else:
-            return
+            raise Exception()
 
-        if node_changed:
-            self.tree_model.update()
-            self.treeView.expandAll()
-
-        if param_changed:
-            self.param_model.update(item)
-            self.parameterView.resizeColumnsToContents()
-
-    @staticmethod
-    def get_cur_selection(view):
-        selection_model = view.selectionModel()
-        index = selection_model.currentIndex()
-        cur_selection = view.model().itemFromIndex(index)
-
-        return cur_selection
+        self.tree_view.model().update()
+        self.tree_view.expandToDepth(-1)
 
 
 class CreateWidget(QWidget):
@@ -218,13 +394,11 @@ class CreateWidget(QWidget):
         self.type_ = None
 
         load_ui('create.ui', self)
-        self.setObjectName('CreateWidget')
         self.setAttribute(Qt.WA_DeleteOnClose, True)
-        self.parentText.setText(parent.text())
-
-        self.patternWidget.close()
-
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
+
+        self.parentText.setText(self.parent.text())
+        self.patternWidget.close()
 
         self.scatter_model = QStandardItemModel(self.patternWidget)
         self.scatterListView.setModel(self.scatter_model)
@@ -234,12 +408,6 @@ class CreateWidget(QWidget):
 
         self.typeBox.currentIndexChanged.connect(self._on_type_index_changed)
         self.patternBox.currentIndexChanged.connect(self._on_pattern_index_changed)
-
-        for w in self.linearWidget.findChildren(QLineEdit):
-            w.textChanged.connect(self._on_text_changed)
-
-        for w in self.rectangularWidget.findChildren(QLineEdit):
-            w.textChanged.connect(self._on_text_changed)
 
         self.addPointButton.clicked.connect(self._on_add_scatter_point)
         self.removePointButton.clicked.connect(self._on_remove_scatter_point)
@@ -258,24 +426,6 @@ class CreateWidget(QWidget):
             return
 
         self.scatter_model.removeRow(cur_selection.row())
-
-    def _on_text_changed(self):
-        pass
-        # les = self.focusWidget().parentWidget().findChildren(QLineEdit)
-        #
-        # count = 0
-        # for le in les:
-        #     if not len(le.text()) == 0:
-        #         count += 1
-        #
-        # if count > 1:
-        #     for le in les:
-        #         if len(le.text()) == 0:
-        #             le.setText('0')
-        #             # le.setEnabled(False)
-        # else:
-        #     for le in les:
-        #         le.setEnabled(True)
 
     def _on_type_index_changed(self):
         self.patternWidget.close()
@@ -307,7 +457,6 @@ class CreateWidget(QWidget):
             self.scatterWidget.show()
 
     def _on_accepted(self):
-
         if self.typeBox.currentText() == 'Transform':
             pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
         elif self.typeBox.currentText() == 'Pattern':
@@ -363,69 +512,83 @@ class CreateWidget(QWidget):
         ]
 
         if type_ == 'Linear':
-            in_ = [
-                self.numPointsText,
-                self.stepSizeText,
-                self.lengthText
-            ]
-
-            for le in in_:
-                self._handle_empty_line(le)
-
-            args.extend([int(in_[0].text()), float(in_[1].text()), float(in_[2].text())])
-            pmc.create_linear_pattern(*args)
+            self._create_linear_pattern(args)
         elif type_ == 'Rectangular':
-            in_ = [
-                self.numPointsXText,
-                self.numPointsYText,
-                self.stepSizesXText,
-                self.stepSizesYText,
-                self.lengthsXText,
-                self.lengthsYText
-            ]
-
-            for le in in_:
-                self._handle_empty_line(le)
-
-            args.extend([
-                [int(in_[0].text()), int(in_[1].text())],
-                [float(in_[2].text()), float(in_[3].text())],
-                [float(in_[4].text()), float(in_[5].text())]
-            ])
-
-            pmc.create_rectangular_pattern(*args)
+            self._create_rectangular_pattern(args)
         elif type_ == 'Scatter':
-            points = []
-            for i in range(self.scatter_model.rowCount()):
-                str_point_lst = list_string_to_list(str(self.scatter_model.item(i).text()))
-
-                point = pm_msg.Point()
-                for s in str_point_lst:
-                    point.point.append(float(s))
-
-                points.append(point)
-
-            args.append(points)
-            pmc.create_scatter_pattern(*args)
+            self._create_scatter_pattern(args)
         elif type_ == 'Circular':
-            in_ = [
-                self.numPointsText2,
-                self.radiusText,
-                self.angularText
-            ]
+            self._create_circular_pattern(args)
+        else:
+            raise ValueError('Pattern type is not implemented')
 
-            for le in in_:
-                self._handle_empty_line(le)
+    def _create_linear_pattern(self, args):
+        in_ = [
+            self.numPointsText,
+            self.stepSizeText,
+            self.lengthText
+        ]
 
-            args.extend([
-                int(in_[0].text()),
-                float(in_[1].text()),
-                self.tanRotCheck.isChecked(),
-                self.cwCheck.isChecked(),
-                float(in_[2].text())
-            ])
+        for le in in_:
+            self._handle_empty_line(le)
 
-            pmc.create_circular_pattern(*args)
+        args.extend([int(in_[0].text()), float(in_[1].text()), float(in_[2].text())])
+        pmc.create_linear_pattern(*args)
+
+    def _create_rectangular_pattern(self, args):
+        in_ = [
+            self.numPointsXText,
+            self.numPointsYText,
+            self.stepSizesXText,
+            self.stepSizesYText,
+            self.lengthsXText,
+            self.lengthsYText
+        ]
+
+        for le in in_:
+            self._handle_empty_line(le)
+
+        args.extend([
+            [int(in_[0].text()), int(in_[1].text())],
+            [float(in_[2].text()), float(in_[3].text())],
+            [float(in_[4].text()), float(in_[5].text())]
+        ])
+
+        pmc.create_rectangular_pattern(*args)
+
+    def _create_circular_pattern(self, args):
+        in_ = [
+            self.numPointsText2,
+            self.radiusText,
+            self.angularText
+        ]
+
+        for le in in_:
+            self._handle_empty_line(le)
+
+        args.extend([
+            int(in_[0].text()),
+            float(in_[1].text()),
+            self.tanRotCheck.isChecked(),
+            self.cwCheck.isChecked(),
+            float(in_[2].text())
+        ])
+
+        pmc.create_circular_pattern(*args)
+
+    def _create_scatter_pattern(self, args):
+        points = []
+        for i in range(self.scatter_model.rowCount()):
+            str_point_lst = list_string_to_list(str(self.scatter_model.item(i).text()))
+
+            point = pm_msg.Point()
+            for s in str_point_lst:
+                point.point.append(float(s))
+
+            points.append(point)
+
+        args.append(points)
+        pmc.create_scatter_pattern(*args)
 
     @staticmethod
     def _handle_empty_line(line_edit):
@@ -433,125 +596,3 @@ class CreateWidget(QWidget):
             return
 
         line_edit.setText(line_edit.placeholderText())
-
-
-class TreeItemModel(QStandardItemModel):
-
-    def __init__(self):
-        super(TreeItemModel, self).__init__()
-
-        self.tree = {}
-        self.params = {
-            'ids': {},
-            'ref_frames': {},
-            'active': {},
-            'translation': {},
-            'rotation': {},
-            'number': {}
-        }
-
-        self.update()
-
-    def update(self):
-        self._update_tree(self.params)
-        self._update_model(self.tree, self.invisibleRootItem())
-
-    def _update_tree(self, params):
-        nested_param_lists = pmc.get_transforms()
-
-        nodes = {}
-        for i in nested_param_lists:
-            name = i.name
-            nodes[name] = {}
-            params['ids'][name] = i.id
-            params['ref_frames'][name] = i.ref_frame
-            params['active'][name] = i.active
-            params['translation'][name] = [i.translation.x, i.translation.y, i.translation.z]
-            params['rotation'][name] = [i.rotation.x, i.rotation.y, i.rotation.z, i.rotation.w]
-            params['number'][name] = i.number
-
-        self.tree = tree_from_nested_lists(nested_param_lists, nodes)
-
-    def _update_model(self, tree=None, parent=None):
-
-        if not tree:
-            tree = self.tree
-
-        if not parent:
-            parent = self.invisibleRootItem()
-
-        for child in sorted(tree):
-            child_item = find_item_child_by_id(parent, self.params['ids'][child])
-
-            if not child_item:
-                child_item = QStandardItem()
-                parent.appendRow(child_item)
-
-            child_item.setText('%s [tf_%s]' % (child, self.params['number'][child]))
-            child_item.setData(
-                {
-                    'name': child,
-                    'id': self.params['ids'][child],
-                    'ref_frame': self.params['ref_frames'][child],
-                    'active': self.params['active'][child],
-                    'translation': self.params['translation'][child],
-                    'rotation': self.params['rotation'][child],
-                })
-            child_item.setEditable(False)
-            self._assign_item_color(child_item)
-
-            if tree[child]:
-                self._update_model(tree[child], child_item)
-
-    def _assign_item_color(self, item):
-        cur_tf_id = pmc.get_current_tf_id()
-
-        def set_italic(it):
-            f = item.font()
-            f.setItalic(it)
-            item.setFont(f)
-
-        if cur_tf_id == item.data()['id']:
-            if not item.font().italic():
-                set_italic(True)
-        else:
-            if item.font().italic():
-                set_italic(False)
-
-        if self.params['active'][item.data()['name']]:
-            color = Qt.white
-        else:
-            color = Qt.gray
-
-        item.setForeground(QBrush(QColor(color)))
-
-
-class TableItemModel(QStandardItemModel):
-
-    def __init__(self):
-        super(TableItemModel, self).__init__()
-
-        self.locked = ['id', 'active']
-
-    def update(self, parent):
-
-        if not parent:
-            return
-
-        self.clear()
-        self.setColumnCount(1)
-
-        def add_item(header, item, row, editable=False):
-            h = QStandardItem(header)
-            t = QStandardItem(str(item))
-            t.setEditable(editable)
-
-            self.setVerticalHeaderItem(row, h)
-            self.setItem(row, 0, t)
-
-        i = 0
-        for k, v in parent.data().items():
-            edit = False if k in self.locked else True
-            add_item(k, v, i, edit)
-
-            i += 1

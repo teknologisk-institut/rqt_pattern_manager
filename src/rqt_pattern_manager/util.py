@@ -52,7 +52,7 @@ def find_item_child_by_id(parent, id_):
     for i in range(0, parent.rowCount()):
         cur_child = parent.child(i)
 
-        if cur_child.data()['id'] == id_:
+        if cur_child and cur_child.data()['id'] == id_:
             return cur_child
 
     return None
@@ -80,3 +80,10 @@ def make_pattern_parent_msg(name, id_, translation, rotation):
     pparent.rotation = list_to_quaternion(rotation)
 
     return pparent
+
+
+def get_current_selection(view):
+    index = view.selectionModel().currentIndex()
+    item = view.model().itemFromIndex(index)
+
+    return item
