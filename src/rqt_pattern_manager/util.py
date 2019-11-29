@@ -87,3 +87,14 @@ def get_current_selection(view):
     item = view.model().itemFromIndex(index)
 
     return item
+
+
+def get_child_ids(parent):
+    ids = []
+    for i in range(parent.rowCount()):
+        child = parent.child(i)
+        id_ = child.data()['id']
+
+        ids.append(id_)
+
+    return ids

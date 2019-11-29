@@ -233,10 +233,11 @@ class CustomTreeView(QTreeView):
         else:
             return
 
-    def dropEvent(self, e):  # TODO: dropping onto other item is not handled
+    def dropEvent(self, e):
         item = get_current_selection(self)
         parent = item.parent()
 
+        # get item at drop position
         target_index = e.source().indexAt(e.pos())
         target_item = e.source().model().itemFromIndex(target_index)
 
@@ -246,12 +247,28 @@ class CustomTreeView(QTreeView):
         super(CustomTreeView, self).dropEvent(e)
 
         target_parent = target_item.parent()
-        if not item.parent().data()['id'] == target_parent.data()['id']:
-            parent = target_parent
-            pmc.set_transform_parent(item.data()['id'], target_parent.data()['id'])
 
+        # check if dropped item has been nested in the target item
+        nested = False
+        for i in range(target_item.rowCount()):
+
+            # set new parent to be the target item
+            if target_item.child(i).data()['id'] == item.data()['id']:
+                parent = target_item
+                pmc.set_transform_parent(item.data()['id'], parent.data()['id'])
+
+                nested = True
+
+                break
+
+        # if item was not nested in target but has changed parent, set new item parent
+        if not item.parent().data()['id'] == target_parent.data()['id'] and not nested:
+            parent = target_parent
+            pmc.set_transform_parent(item.data()['id'], parent.data()['id'])
+
+        # list new order under item parent
         order = []
-        for i in range(parent.rowCount()):
+        for i in range(parent.rowCount()):  # TODO: implement util.find_child_ids instead
 
             if i == item.row():
                 continue
@@ -261,6 +278,7 @@ class CustomTreeView(QTreeView):
 
             order.append(id_)
 
+        # set new order in node
         pmc.set_iteration_order(parent.data()['id'], order)
 
 
