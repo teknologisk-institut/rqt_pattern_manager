@@ -34,9 +34,9 @@ from PyQt5.QtWidgets import \
     QSpacerItem, \
     QProxyStyle, \
     QStyleOption
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen, QDropEvent, QDragMoveEvent
 from PyQt5.QtCore import pyqtSignal, Qt, QAbstractListModel, QCoreApplication
-from .util import *
+from rqt_pattern_manager.util import *
 from collections import OrderedDict
 
 
@@ -135,6 +135,10 @@ class CustomTableItemModel(QStandardItemModel):
         self.locked = ['active']
 
     def update(self, parent):
+
+        if not parent:
+            return
+
         self.clear()
         self.setColumnCount(1)
 
@@ -174,7 +178,8 @@ class CustomProxyStyle(QProxyStyle):
     def drawPrimitive(self, element, option, painter, widget=None):
 
         if element == self.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
-            painter.setPen(QPen(QColor(Qt.white)))
+            pen = QPen(QColor(Qt.white))
+            painter.setPen(pen)
 
         super(CustomProxyStyle, self).drawPrimitive(element, option, painter, widget)
 
@@ -228,14 +233,22 @@ class CustomTreeView(QTreeView):
         else:
             return
 
-    def dropEvent(self, e):
+    def dropEvent(self, e):  # TODO: dropping onto other item is not handled
         item = get_current_selection(self)
         parent = item.parent()
+
+        target_index = e.source().indexAt(e.pos())
+        target_item = e.source().model().itemFromIndex(target_index)
 
         if not parent:
             return
 
         super(CustomTreeView, self).dropEvent(e)
+
+        target_parent = target_item.parent()
+        if not item.parent().data()['id'] == target_parent.data()['id']:
+            parent = target_parent
+            pmc.set_transform_parent(item.data()['id'], target_parent.data()['id'])
 
         order = []
         for i in range(parent.rowCount()):

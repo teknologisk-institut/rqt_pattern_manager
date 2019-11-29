@@ -20,14 +20,14 @@ import rospy
 import pattern_manager.srv as pm_srv
 import std_srvs.srv as std_srv
 
-from .util import make_pattern_parent_msg
+from rqt_pattern_manager.util import make_pattern_parent_msg
 
 
-def set_transform_parent(id, parent_id):
+def set_transform_parent(id_, parent_id):
     rospy.wait_for_service('pattern_manager/set_transform_parent')
     try:
         set_par = rospy.ServiceProxy('pattern_manager/set_transform_parent', pm_srv.SetParent)
-        resp = set_par(id, parent_id)
+        resp = set_par(id_, parent_id)
 
         return resp.success
     except rospy.ServiceException, e:
