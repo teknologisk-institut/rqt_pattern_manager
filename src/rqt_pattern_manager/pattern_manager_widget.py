@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import \
     QTableView, \
     QSpacerItem, \
     QProxyStyle, \
-    QStyleOption
+    QFileDialog
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen, QDropEvent, QDragMoveEvent
 from PyQt5.QtCore import pyqtSignal, Qt, QAbstractListModel, QCoreApplication
 from rqt_pattern_manager.util import *
@@ -99,6 +99,22 @@ class CustomTreeItemModel(QStandardItemModel):
                 par_item.appendRow(item)
 
         self.updated.emit()
+
+    def dropMimeData(self, data, action, row, column, parent):
+        success = super(CustomTreeItemModel, self).dropMimeData(data, action, row, column, parent)
+
+        parent_item = self.itemFromIndex(parent)
+
+        if row < 0:
+            row = parent_item.rowCount() - 1
+
+        item = parent_item.child(row)
+        pmc.set_transform_parent(item.data()['id'], parent_item.data()['id'])
+
+        order = get_child_ids(parent_item)
+        pmc.set_iteration_order(parent_item.data()['id'], order)
+
+        return success
 
     @staticmethod
     def _set_item_font(item):
@@ -233,54 +249,6 @@ class CustomTreeView(QTreeView):
         else:
             return
 
-    def dropEvent(self, e):
-        item = get_current_selection(self)
-        parent = item.parent()
-
-        # get item at drop position
-        target_index = e.source().indexAt(e.pos())
-        target_item = e.source().model().itemFromIndex(target_index)
-
-        if not parent:
-            return
-
-        super(CustomTreeView, self).dropEvent(e)
-
-        target_parent = target_item.parent()
-
-        # check if dropped item has been nested in the target item
-        nested = False
-        for i in range(target_item.rowCount()):
-
-            # set new parent to be the target item
-            if target_item.child(i).data()['id'] == item.data()['id']:
-                parent = target_item
-                pmc.set_transform_parent(item.data()['id'], parent.data()['id'])
-
-                nested = True
-
-                break
-
-        # if item was not nested in target but has changed parent, set new item parent
-        if not item.parent().data()['id'] == target_parent.data()['id'] and not nested:
-            parent = target_parent
-            pmc.set_transform_parent(item.data()['id'], parent.data()['id'])
-
-        # list new order under item parent
-        order = []
-        for i in range(parent.rowCount()):  # TODO: implement util.find_child_ids instead
-
-            if i == item.row():
-                continue
-
-            child = parent.child(i)
-            id_ = child.data()['id']
-
-            order.append(id_)
-
-        # set new order in node
-        pmc.set_iteration_order(parent.data()['id'], order)
-
 
 class CustomTableView(QTableView):
 
@@ -353,10 +321,26 @@ class MainWidget(QWidget):
         ))
         self.resetButton.clicked.connect(self._on_reset_all)
         self.expandButton.clicked.connect(lambda: self.tree_view.expandToDepth(-1))
+        self.saveButton.clicked.connect(self.save_tree)
 
         self.init_cnt_actv = len(pmc.get_active_ids())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
+
+    def save_tree(self):
+        dialog = QFileDialog()
+        dialog.setDefaultSuffix('yaml')
+        filename, _ = dialog.getSaveFileName(self, 'Open File', '/', "YAML (*.yaml *.yml);;All files (*.*)")
+
+        if not filename:
+            return
+
+        # if not filename.lower().endswith('.yml', '.yaml'):
+        #     rospy.logwarn('File must have .yml or .yaml extension. Skipping save')
+        #
+        #     return
+
+        rospy.logwarn(filename)
 
     def _on_reset_all(self):
         actv_ids = pmc.get_active_ids()
