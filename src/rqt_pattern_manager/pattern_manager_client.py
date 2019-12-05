@@ -23,6 +23,28 @@ import std_srvs.srv as std_srv
 from rqt_pattern_manager.util import make_pattern_parent_msg
 
 
+def load(filename):
+    rospy.wait_for_service('pattern_manager/load')
+    try:
+        ld = rospy.ServiceProxy('pattern_manager/load', pm_srv.Save)
+        resp = ld(filename)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
+def save(filename):
+    rospy.wait_for_service('pattern_manager/save')
+    try:
+        sv = rospy.ServiceProxy('pattern_manager/save', pm_srv.Save)
+        resp = sv(filename)
+
+        return resp.success
+    except rospy.ServiceException, e:
+        print 'Service call failed: %s' % e
+
+
 def set_transform_parent(id_, parent_id):
     rospy.wait_for_service('pattern_manager/set_transform_parent')
     try:

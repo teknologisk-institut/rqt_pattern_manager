@@ -19,6 +19,7 @@
 import pattern_manager_client as pmc
 import resources
 import math
+import string
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -122,7 +123,6 @@ class CustomTreeItemModel(QStandardItemModel):
         f = item.font()
 
         if cur_tf_id == item.data()['id']:
-
             if not item.font().italic():
                 f.setItalic(True)
         else:
@@ -148,7 +148,7 @@ class CustomTableItemModel(QStandardItemModel):
     def __init__(self):
         super(CustomTableItemModel, self).__init__()
 
-        self.locked = ['active']
+        self.locked = ['active', 'ref_frame']
 
     def update(self, parent):
 
@@ -322,10 +322,22 @@ class MainWidget(QWidget):
         self.resetButton.clicked.connect(self._on_reset_all)
         self.expandButton.clicked.connect(lambda: self.tree_view.expandToDepth(-1))
         self.saveButton.clicked.connect(self.save_tree)
+        self.loadButton.clicked.connect(self.load_tree)
 
         self.init_cnt_actv = len(pmc.get_active_ids())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
+
+    def load_tree(self):
+        dialog = QFileDialog()
+        dialog.setDefaultSuffix('yaml')
+        filename, _ = dialog.getOpenFileName(self, 'Open File', '/', "YAML (*.yaml *.yml)")
+
+        if not filename:
+            return
+
+        pmc.load(filename)
+        self.tree_view.model().update()
 
     def save_tree(self):
         dialog = QFileDialog()
@@ -335,12 +347,10 @@ class MainWidget(QWidget):
         if not filename:
             return
 
-        # if not filename.lower().endswith('.yml', '.yaml'):
-        #     rospy.logwarn('File must have .yml or .yaml extension. Skipping save')
-        #
-        #     return
+        if not filename.lower().endswith(('.yml', '.yaml')):
+            filename += '.yaml'
 
-        rospy.logwarn(filename)
+        pmc.save(filename)
 
     def _on_reset_all(self):
         actv_ids = pmc.get_active_ids()
@@ -384,7 +394,9 @@ class MainWidget(QWidget):
             pmc.set_active(item.data()['id'], True)
 
             self.init_cnt_actv = len(pmc.get_active_ids())
-            self.progressBar.setValue(100)
+
+            if self.init_cnt_actv > 0:
+                self.progressBar.setValue(100)
         elif action == "deactivate_item":
             pmc.set_active(item.data()['id'], False)
 
@@ -412,7 +424,10 @@ class CreateWidget(QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
 
+        ref_text = str(self.parent.text()).split('[', 1)[0].strip()
+        self.referenceText.setText(ref_text)
         self.parentText.setText(self.parent.text())
+
         self.patternWidget.close()
 
         self.scatter_model = QStandardItemModel(self.patternWidget)
@@ -426,6 +441,35 @@ class CreateWidget(QWidget):
 
         self.addPointButton.clicked.connect(self._on_add_scatter_point)
         self.removePointButton.clicked.connect(self._on_remove_scatter_point)
+
+        lin_les = [self.numPointsText, self.stepSizeText, self.lengthText]
+        rect_x_les = [self.numPointsXText, self.stepSizesXText, self.lengthsXText]
+        rect_y_les = [self.numPointsYText, self.stepSizesYText, self.lengthsYText]
+
+        for le in lin_les:
+            le.textChanged.connect(lambda: self._restrict_num_fields(lin_les))
+
+        for le in rect_x_les:
+            le.textChanged.connect(lambda: self._restrict_num_fields(rect_x_les))
+
+        for le in rect_y_les:
+            le.textChanged.connect(lambda: self._restrict_num_fields(rect_y_les))
+
+    @staticmethod
+    def _restrict_num_fields(line_edits):
+        count = len(line_edits) - 1
+
+        for le in line_edits:
+            if len(le.text()) > 0:
+                count -= 1
+
+        if count == 0:
+            for le in line_edits:
+                if len(le.text()) == 0:
+                    le.setEnabled(False)
+        else:
+            for le in line_edits:
+                le.setEnabled(True)
 
     def _on_add_scatter_point(self):
         point = [float(self.pointXText.text()), float(self.pointYText.text()), float(self.pointZText.text())]
@@ -472,6 +516,13 @@ class CreateWidget(QWidget):
             self.scatterWidget.show()
 
     def _on_accepted(self):
+
+        empty = self.check_required_field_empty(self.nameText)
+        empty = self.check_required_field_empty(self.referenceText) or empty
+
+        if empty:
+            return
+
         if self.typeBox.currentText() == 'Transform':
             pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
         elif self.typeBox.currentText() == 'Pattern':
@@ -611,3 +662,14 @@ class CreateWidget(QWidget):
             return
 
         line_edit.setText(line_edit.placeholderText())
+
+    @staticmethod
+    def check_required_field_empty(field):
+
+        if len(field.text()) == 0:
+            field.setStyleSheet("border: 2px solid red;")
+            rospy.logwarn('Required fields cannot be empty')
+
+            return True
+
+        return False

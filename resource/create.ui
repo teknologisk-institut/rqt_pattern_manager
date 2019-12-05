@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>1055</height>
+    <height>1064</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -66,13 +66,13 @@ QLabel {
 QLineEdit {
 	color: white;
 	background-color: #272727;
+	height: 21px;
+	border: 2px solid rgb(158, 158, 158);
 }
 
-/*
-QLineEdit:disabled {
-	background-color: rgb(128, 95, 155);
+QLineEdit::!enabled {
+	background-color: rgb(92, 92, 92);
 }
-*/
 
 QComboBox {
 	background-color: #7d7d7d;
@@ -81,11 +81,25 @@ QComboBox {
 	color: white;
 	height: 27px;
 	padding: 3px 3px 3px 3px;
-	border-left: 1px solid white;
-	border-top: 1px solid white;
-	border-right: 1px solid black;
-	border-bottom: 1px solid black;
+	border-left: 1px solid rgb(187, 187, 187);
+	border-top: 1px solid rgb(187, 187, 187);
+	border-right: 1px solid rgb(41, 41, 41);
+	border-bottom: 1px solid rgb(41, 41, 41);
 }
+
+QComboBox::drop-down {
+	width: 45px;
+	border: none;
+}
+
+
+QComboBox::down-arrow {
+	width: 13px;	
+	height: 8px;
+	border: none;
+	border-image: url(&quot;:/resource/down-arrow.png&quot;);
+}
+
 
 QComboBox::item {
 	background-color: #7d7d7d;
@@ -1083,7 +1097,7 @@ QListView {
            <item>
             <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Name:</string>
+              <string>Name: *</string>
              </property>
             </widget>
            </item>
@@ -1116,7 +1130,7 @@ QListView {
            <item>
             <widget class="QLabel" name="label_3">
              <property name="text">
-              <string>Reference frame:</string>
+              <string>Reference frame: *</string>
              </property>
             </widget>
            </item>
@@ -1132,7 +1146,7 @@ QListView {
               <string/>
              </property>
              <property name="placeholderText">
-              <string extracomment="The reference frame of the transform">parent frame</string>
+              <string extracomment="The reference frame of the transform"/>
              </property>
             </widget>
            </item>
