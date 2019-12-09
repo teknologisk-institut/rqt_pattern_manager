@@ -19,14 +19,16 @@
 import rospy
 import pattern_manager.srv as pm_srv
 import std_srvs.srv as std_srv
+import geometry_msgs.msg as gm_msg
+import ast
 
-from rqt_pattern_manager.util import make_pattern_parent_msg
+from .util import make_pattern_parent_msg
 
 
 def load(filename):
-    rospy.wait_for_service('pattern_manager/load')
+    rospy.wait_for_service('pattern_manager/load', 20)
     try:
-        ld = rospy.ServiceProxy('pattern_manager/load', pm_srv.Save)
+        ld = rospy.ServiceProxy('pattern_manager/load', pm_srv.Filename)
         resp = ld(filename)
 
         return resp.success
@@ -35,9 +37,9 @@ def load(filename):
 
 
 def save(filename):
-    rospy.wait_for_service('pattern_manager/save')
+    rospy.wait_for_service('pattern_manager/save', 20)
     try:
-        sv = rospy.ServiceProxy('pattern_manager/save', pm_srv.Save)
+        sv = rospy.ServiceProxy('pattern_manager/save', pm_srv.Filename)
         resp = sv(filename)
 
         return resp.success
@@ -46,7 +48,7 @@ def save(filename):
 
 
 def set_transform_parent(id_, parent_id):
-    rospy.wait_for_service('pattern_manager/set_transform_parent')
+    rospy.wait_for_service('pattern_manager/set_transform_parent', 20)
     try:
         set_par = rospy.ServiceProxy('pattern_manager/set_transform_parent', pm_srv.SetParent)
         resp = set_par(id_, parent_id)
@@ -57,9 +59,9 @@ def set_transform_parent(id_, parent_id):
 
 
 def get_transform_ids():
-    rospy.wait_for_service('pattern_manager/get_transform_ids')
+    rospy.wait_for_service('pattern_manager/get_transform_ids', 20)
     try:
-        get_ids = rospy.ServiceProxy('pattern_manager/get_transform_ids', pm_srv.ActiveIds)
+        get_ids = rospy.ServiceProxy('pattern_manager/get_transform_ids', pm_srv.GetIds)
         resp = get_ids()
 
         return resp.ids
@@ -68,7 +70,7 @@ def get_transform_ids():
 
 
 def set_iteration_order(parent_id, order):
-    rospy.wait_for_service('pattern_manager/set_iteration_order')
+    rospy.wait_for_service('pattern_manager/set_iteration_order', 20)
     try:
         set_order = rospy.ServiceProxy('pattern_manager/set_iteration_order', pm_srv.SetIterationOrder)
         resp = set_order(parent_id, order)
@@ -79,7 +81,7 @@ def set_iteration_order(parent_id, order):
 
 
 def create_linear_pattern(name, parent_id, translation, rotation, num_points, step_size, length):
-    rospy.wait_for_service('pattern_manager/create_linear_pattern')
+    rospy.wait_for_service('pattern_manager/create_linear_pattern', 20)
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_linear_pattern', pm_srv.CreateLinearPattern)
 
@@ -92,7 +94,7 @@ def create_linear_pattern(name, parent_id, translation, rotation, num_points, st
 
 
 def create_rectangular_pattern(name, parent_id, translation, rotation, num_points, step_size, length):
-    rospy.wait_for_service('pattern_manager/create_rectangular_pattern')
+    rospy.wait_for_service('pattern_manager/create_rectangular_pattern', 20)
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_rectangular_pattern', pm_srv.CreateRectangularPattern)
 
@@ -105,7 +107,7 @@ def create_rectangular_pattern(name, parent_id, translation, rotation, num_point
 
 
 def create_scatter_pattern(name, parent_id, translation, rotation, points):
-    rospy.wait_for_service('pattern_manager/create_scatter_pattern')
+    rospy.wait_for_service('pattern_manager/create_scatter_pattern', 20)
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_scatter_pattern', pm_srv.CreateScatterPattern)
 
@@ -118,7 +120,7 @@ def create_scatter_pattern(name, parent_id, translation, rotation, points):
 
 
 def create_circular_pattern(name, parent_id, translation, rotation, num_points, r, tan_rot, cw, angular_section):
-    rospy.wait_for_service('pattern_manager/create_circular_pattern')
+    rospy.wait_for_service('pattern_manager/create_circular_pattern', 20)
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_circular_pattern', pm_srv.CreateCircularPattern)
 
@@ -131,9 +133,9 @@ def create_circular_pattern(name, parent_id, translation, rotation, num_points, 
 
 
 def get_active_ids():
-    rospy.wait_for_service('pattern_manager/get_active_ids')
+    rospy.wait_for_service('pattern_manager/get_active_ids', 20)
     try:
-        actv_ids = rospy.ServiceProxy('pattern_manager/get_active_ids', pm_srv.ActiveIds)
+        actv_ids = rospy.ServiceProxy('pattern_manager/get_active_ids', pm_srv.GetIds)
         resp = actv_ids()
 
         return resp.ids
@@ -142,9 +144,9 @@ def get_active_ids():
 
 
 def get_current_tf_id():
-    rospy.wait_for_service('pattern_manager/get_current_tf_id')
+    rospy.wait_for_service('pattern_manager/get_current_transform_id', 20)
     try:
-        cur_tf_id = rospy.ServiceProxy('pattern_manager/get_current_tf_id', pm_srv.IdRequest)
+        cur_tf_id = rospy.ServiceProxy('pattern_manager/get_current_transform_id', pm_srv.GetCurrentId)
         resp = cur_tf_id()
 
         return resp.id
@@ -153,7 +155,7 @@ def get_current_tf_id():
 
 
 def iterate():
-    rospy.wait_for_service('pattern_manager/iterate')
+    rospy.wait_for_service('pattern_manager/iterate', 20)
     try:
         iter_ = rospy.ServiceProxy('pattern_manager/iterate', std_srv.Trigger)
         resp = iter_()
@@ -163,11 +165,22 @@ def iterate():
         print 'Service call failed: %s' % e
 
 
-def update_transform_var(id_, var, val):
-    rospy.wait_for_service('pattern_manager/update_tf_variable')
+def update_transform_var(id_, name, ref_frame, active, translation, rotation):
+    rospy.wait_for_service('pattern_manager/update_transform_variable', 20)
     try:
-        chng_nm = rospy.ServiceProxy('pattern_manager/update_tf_variable', pm_srv.UpdateVar)
-        resp = chng_nm(id_, var, val)
+        trans = ast.literal_eval(translation)
+        rot = ast.literal_eval(rotation)
+
+        req = pm_srv.UpdateTransformRequest()
+        req.id = id_
+        req.name = str(name)
+        req.ref_frame = str(ref_frame)
+        req.active = bool(active)
+        req.translation = gm_msg.Vector3(x=trans[0], y=trans[1], z=trans[2])
+        req.rotation = gm_msg.Quaternion(x=rot[0], y=rot[1], z=rot[2], w=rot[3])
+
+        chng_nm = rospy.ServiceProxy('pattern_manager/update_transform_variable', pm_srv.UpdateTransform)
+        resp = chng_nm(req)
 
         return resp.success
     except rospy.ServiceException, e:
@@ -175,7 +188,7 @@ def update_transform_var(id_, var, val):
 
 
 def get_transform(id_):
-    rospy.wait_for_service('pattern_manager/get_transform')
+    rospy.wait_for_service('pattern_manager/get_transform', 20)
     try:
         get_tf = rospy.ServiceProxy('pattern_manager/get_transform', pm_srv.GetTransformParams)
         resp = get_tf(id_)
@@ -186,7 +199,7 @@ def get_transform(id_):
 
 
 def create_transform(name, parent_id, ref_frame):
-    rospy.wait_for_service('pattern_manager/create_transform')
+    rospy.wait_for_service('pattern_manager/create_transform', 20)
     try:
         crt_tf = rospy.ServiceProxy('pattern_manager/create_transform', pm_srv.CreateGroup)
         resp = crt_tf(name, parent_id, ref_frame)
@@ -197,9 +210,9 @@ def create_transform(name, parent_id, ref_frame):
 
 
 def remove_transform(id_):
-    rospy.wait_for_service('pattern_manager/remove_transform')
+    rospy.wait_for_service('pattern_manager/remove_transform', 20)
     try:
-        rm_tf = rospy.ServiceProxy('pattern_manager/remove_transform', pm_srv.NodeId)
+        rm_tf = rospy.ServiceProxy('pattern_manager/remove_transform', pm_srv.TransformId)
         resp = rm_tf(id_)
 
         return resp.success
@@ -208,7 +221,7 @@ def remove_transform(id_):
 
 
 def set_active(id_, active):
-    rospy.wait_for_service('pattern_manager/set_active')
+    rospy.wait_for_service('pattern_manager/set_active', 20)
     try:
         set_actv = rospy.ServiceProxy('pattern_manager/set_active', pm_srv.SetActive)
         resp = set_actv(id_, active)

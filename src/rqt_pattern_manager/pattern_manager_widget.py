@@ -18,8 +18,6 @@
 
 import pattern_manager_client as pmc
 import resources
-import math
-import string
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -34,11 +32,33 @@ from PyQt5.QtWidgets import \
     QTableView, \
     QSpacerItem, \
     QProxyStyle, \
-    QFileDialog
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen, QDropEvent, QDragMoveEvent
-from PyQt5.QtCore import pyqtSignal, Qt, QAbstractListModel, QCoreApplication
-from rqt_pattern_manager.util import *
+    QFileDialog, \
+    QDialog
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen
+from PyQt5.QtCore import pyqtSignal, Qt
+from .util import *
 from collections import OrderedDict
+
+
+class CustomDialog(QDialog):
+
+    def __init__(self, parent, root_id):
+        super(CustomDialog, self).__init__(parent)
+
+        load_ui('dialog.ui', self)
+        self.setObjectName('DialogWidget')
+
+        self.root_id = root_id
+
+        self.accepted.connect(self._on_accepted)
+        self.rejected.connect(self._on_rejected)
+
+    def _on_accepted(self):
+
+        self.close()
+
+    def _on_rejected(self):
+        self.close()
 
 
 class CustomTreeItemModel(QStandardItemModel):
@@ -148,7 +168,7 @@ class CustomTableItemModel(QStandardItemModel):
     def __init__(self):
         super(CustomTableItemModel, self).__init__()
 
-        self.locked = ['active', 'ref_frame']
+        self.locked = ['active']
 
     def update(self, parent):
 
@@ -252,6 +272,8 @@ class CustomTreeView(QTreeView):
 
 class CustomTableView(QTableView):
 
+    updated = pyqtSignal()
+
     def __init__(self, parent):
         super(CustomTableView, self).__init__(parent)
 
@@ -265,12 +287,22 @@ class CustomTableView(QTableView):
 
     def _on_data_changed(self):
 
-        if self.selectionModel().hasSelection():
-            index = self.selectionModel().currentIndex()
-            item = self.model().itemFromIndex(index)
-            item_header = self.model().verticalHeaderItem(item.row()).text()
+        if not self.selectionModel().hasSelection():
+            return
 
-            pmc.update_transform_var(item.data()['id'], str(item_header), str(item.text()))
+        index = self.selectionModel().currentIndex()
+        item = self.model().itemFromIndex(index)
+
+        table_dict = {'id_': item.data()}
+        for i in range(self.model().rowCount()):
+            item = self.model().item(i)
+            item_header = self.model().verticalHeaderItem(i).text()
+
+            table_dict[str(item_header)] = str(item.text())
+
+        pmc.update_transform_var(**table_dict)
+
+        self.updated.emit()
 
 
 class MainWidget(QWidget):
@@ -283,7 +315,7 @@ class MainWidget(QWidget):
         self.setBaseSize(self.minimumSize())
 
         self.tree_view = CustomTreeView(self)
-        self.param_view = CustomTableView(self)
+        self.param_view = CustomTableView(self.tree_view)
 
         self.containerWidget.layout().addWidget(self.topWidget)
         self.containerWidget.layout().addWidget(self.progressWidget)
@@ -300,6 +332,7 @@ class MainWidget(QWidget):
         self.tree_view.selectionModel().selectionChanged.connect(
             lambda: self.param_view.model().update(get_current_selection(self.tree_view)))
         self.tree_view.selectionModel().selectionChanged.connect(self.param_view.resizeColumnsToContents)
+        self.param_view.updated.connect(self.tree_view.model().update)
 
         self.quitButton.clicked.connect(QApplication.quit)
         self.stepButton.clicked.connect(self._on_iterate)
@@ -334,6 +367,8 @@ class MainWidget(QWidget):
         filename, _ = dialog.getOpenFileName(self, 'Open File', '/', "YAML (*.yaml *.yml)")
 
         if not filename:
+            rospy.logwarn('Filename is empty. Ignoring action')
+
             return
 
         pmc.load(filename)
@@ -342,9 +377,11 @@ class MainWidget(QWidget):
     def save_tree(self):
         dialog = QFileDialog()
         dialog.setDefaultSuffix('yaml')
-        filename, _ = dialog.getSaveFileName(self, 'Open File', '/', "YAML (*.yaml *.yml);;All files (*.*)")
+        filename, _ = dialog.getSaveFileName(self, 'Open File', '/', "All files (All files (*.*)")
 
         if not filename:
+            rospy.logwarn('Filename is empty. Ignoring action')
+
             return
 
         if not filename.lower().endswith(('.yml', '.yaml')):
@@ -526,6 +563,9 @@ class CreateWidget(QWidget):
         if self.typeBox.currentText() == 'Transform':
             pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
         elif self.typeBox.currentText() == 'Pattern':
+            for le in self.patternWidget.findChildren(QLineEdit):
+                le.setEnabled(True)
+
             self._create_pattern(self.patternBox.currentText())
 
         self.tfCreated.emit()
@@ -599,6 +639,7 @@ class CreateWidget(QWidget):
             self._handle_empty_line(le)
 
         args.extend([int(in_[0].text()), float(in_[1].text()), float(in_[2].text())])
+
         pmc.create_linear_pattern(*args)
 
     def _create_rectangular_pattern(self, args):

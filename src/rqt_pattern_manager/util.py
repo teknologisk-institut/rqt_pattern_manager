@@ -17,7 +17,6 @@
 # Author: Mads Vainoe Baatrup
 
 import os
-import rospy
 import rospkg
 import geometry_msgs.msg as gm_msg
 import pattern_manager.msg as pm_msg
@@ -73,7 +72,7 @@ def list_string_to_list(str_):
 
 
 def make_pattern_parent_msg(name, id_, translation, rotation):
-    pparent = pm_msg.PatternParent()
+    pparent = pm_msg.Params()
     pparent.name = name
     pparent.parent_id = id_
     pparent.translation = list_to_vector3(translation)
