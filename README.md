@@ -1,2 +1,2 @@
 # rqt_pattern_manager
-GUI for Pattern Manager
+RQT plugin for Pattern Manager.
