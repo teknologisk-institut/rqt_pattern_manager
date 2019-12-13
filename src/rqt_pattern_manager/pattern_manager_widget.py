@@ -41,6 +41,9 @@ from collections import OrderedDict
 
 
 class CustomTreeItemModel(QStandardItemModel):
+    """
+    This class is a subclass of `QStandardItemModel` used as the model of the `CustomTreeView` class
+    """
 
     updated = pyqtSignal()
 
@@ -50,6 +53,10 @@ class CustomTreeItemModel(QStandardItemModel):
         self.update()
 
     def update(self):
+        """
+        This function fetches transform information from the pattern_manager node and updates the model accordingly
+        """
+
         self.clear()
 
         ids = pmc.get_transform_ids()
@@ -101,6 +108,24 @@ class CustomTreeItemModel(QStandardItemModel):
         self.updated.emit()
 
     def dropMimeData(self, data, action, row, column, parent):
+        """
+        Reimplementation of super function. This function updates a transform's parent data and updates the ordering
+        of the parent's children after a drop event has occurred
+
+        :param data: The dropped item's MIME data
+        :type data: QMimeData
+        :param action: The assigned drop action
+        :type action: Qt_DropAction
+        :param row: The row where the item is dropped (-1 if dropped between items)
+        :type row: int
+        :param column: The column where the item is dropped
+        :type column: int
+        :param parent: The model index of the parent of the dropped item
+        :type parent: QModelIndex
+        :return: `True` if the drop was successful, otherwise `False`
+        :rtype: bool
+        """
+
         success = super(CustomTreeItemModel, self).dropMimeData(data, action, row, column, parent)
 
         parent_item = self.itemFromIndex(parent)
@@ -118,6 +143,13 @@ class CustomTreeItemModel(QStandardItemModel):
 
     @staticmethod
     def _set_item_font(item):
+        """
+        This function assigns the font of a supplied item
+
+        :param item: The item to assign a font
+        :type item: QStandardItem
+        """
+
         cur_tf_id = pmc.get_current_tf_id()
         f = item.font()
 
@@ -133,6 +165,12 @@ class CustomTreeItemModel(QStandardItemModel):
 
     @staticmethod
     def _set_item_color(item):
+        """
+        This function assigns the color of a supplied item
+
+        :param item: The item to assign a color
+        :type item: QStandardItem
+        """
 
         if item.data()['active']:
             color = Qt.white
@@ -143,6 +181,9 @@ class CustomTreeItemModel(QStandardItemModel):
 
 
 class CustomTableItemModel(QStandardItemModel):
+    """
+    This class is a subclass of `QStandardItemModel` used as the model of the `CustomTableView` class
+    """
 
     def __init__(self):
         super(CustomTableItemModel, self).__init__()
@@ -150,6 +191,9 @@ class CustomTableItemModel(QStandardItemModel):
         self.locked = ['active']
 
     def update(self, parent):
+        """
+        This function fetches transform information from the pattern_manager node and updates the model accordingly
+        """
 
         if not parent:
             return
@@ -186,11 +230,27 @@ class CustomTableItemModel(QStandardItemModel):
 
 
 class CustomProxyStyle(QProxyStyle):
+    """
+    This class is a subclass of `QProxyStyle` used as the style proxy of the `CustomTreeView` class
+    """
 
     def __init__(self):
         super(CustomProxyStyle, self).__init__()
 
+    # def drawPrimitive(self, QStyle_PrimitiveElement, QStyleOption, QPainter, QWidget_widget=None):
     def drawPrimitive(self, element, option, painter, widget=None):
+        """
+        Reimplementation of super function. This function handles the drawing of the item view drop indicator
+
+        :param element: The primitive element to be drawn
+        :type element: QStyle_PrimitiveElement
+        :param option: Style options for the draw event
+        :type option: QStyleOption
+        :param painter: The painter used to draw the primitive
+        :type painter: QPainter
+        :param widget: An associated widget object
+        :type widget: QWidget
+        """
 
         if element == self.PE_IndicatorItemViewItemDrop and not option.rect.isNull():
             pen = QPen(QColor(Qt.white))
@@ -200,6 +260,12 @@ class CustomProxyStyle(QProxyStyle):
 
 
 class CustomTreeView(QTreeView):
+    """
+    This class is a subclass of `QTreeView` and is the view of the `CustomTreeItemModel` class
+
+    :param parent: The parent widget of the class
+    :type parent: QWidget
+    """
 
     def __init__(self, parent):
         super(CustomTreeView, self).__init__(parent)
@@ -222,6 +288,13 @@ class CustomTreeView(QTreeView):
         self.customContextMenuRequested.connect(self._context_menu)
 
     def _context_menu(self, pos):
+        """
+        This callback function creates a context menu and assigns the various actions to it
+
+        :param pos: The pointer position at the time of the call
+        :type pos: tuple
+        """
+
         cur_selection = get_current_selection(self)
 
         if not cur_selection:
@@ -250,6 +323,12 @@ class CustomTreeView(QTreeView):
 
 
 class CustomTableView(QTableView):
+    """
+    This class is a subclass of `QTableView` and is the view of the `CustomTableItemModel` class
+
+    :param parent: The parent widget of the class
+    :type parent: QWidget
+    """
 
     updated = pyqtSignal()
 
@@ -265,6 +344,10 @@ class CustomTableView(QTableView):
         model.dataChanged.connect(self._on_data_changed)
 
     def _on_data_changed(self):
+        """
+        This callback function updates the associated transform when data is changed in the model
+
+        """
 
         if not self.selectionModel().hasSelection():
             return
@@ -285,6 +368,9 @@ class CustomTableView(QTableView):
 
 
 class MainWidget(QWidget):
+    """
+    This class is the main widget of the app
+    """
 
     def __init__(self):
         super(MainWidget, self).__init__()
@@ -333,34 +419,39 @@ class MainWidget(QWidget):
         ))
         self.resetButton.clicked.connect(self._on_reset_all)
         self.expandButton.clicked.connect(lambda: self.tree_view.expandToDepth(-1))
-        self.saveButton.clicked.connect(self.save_tree)
-        self.loadButton.clicked.connect(self.load_tree)
+        self.saveButton.clicked.connect(self._save_tree)
+        self.loadButton.clicked.connect(self._load_tree)
 
         self.init_cnt_actv = len(pmc.get_active_ids())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
 
-    def load_tree(self):
+    def _load_tree(self):
+        """
+        This callback function creates a new transform tree from a chosen .yaml file
+        and populates the models accordingly
+        """
+
         dialog = QFileDialog()
         dialog.setDefaultSuffix('yaml')
         filename, _ = dialog.getOpenFileName(self, 'Open File', '/', "YAML (*.yaml *.yml)")
 
         if not filename:
-            rospy.logwarn('Filename is empty. Ignoring action')
-
             return
 
         pmc.load(filename)
         self.tree_view.model().update()
 
-    def save_tree(self):
+    def _save_tree(self):
+        """
+        This callback function saves the current transform tree to a .yaml file
+        """
+
         dialog = QFileDialog()
         dialog.setDefaultSuffix('yaml')
         filename, _ = dialog.getSaveFileName(self, 'Open File', '/', "All files (All files (*.*)")
 
         if not filename:
-            rospy.logwarn('Filename is empty. Ignoring action')
-
             return
 
         if not filename.lower().endswith(('.yml', '.yaml')):
@@ -369,6 +460,10 @@ class MainWidget(QWidget):
         pmc.save(filename)
 
     def _on_reset_all(self):
+        """
+        This callback function deactivates all currently active transforms and resets the progress bar
+        """
+
         actv_ids = pmc.get_active_ids()
 
         for id_ in actv_ids:
@@ -378,6 +473,10 @@ class MainWidget(QWidget):
         self.tree_view.model().update()
 
     def _on_iterate(self):
+        """
+        This callback function iterates the active transforms and updates the progress bar
+        """
+
         cnt_actv = len(pmc.get_active_ids())
 
         if cnt_actv == 0:
@@ -390,6 +489,14 @@ class MainWidget(QWidget):
         self.tree_view.model().update()
 
     def call_action(self, action, item):
+        """
+        This function executes a chosen action selected in the user interfaces
+
+        :param action: The action to be executed
+        :type action: str
+        :param item: The item associated with the action
+        :type item: QStandardItem
+        """
 
         if not item:
             return
@@ -427,6 +534,12 @@ class MainWidget(QWidget):
 
 
 class CreateWidget(QWidget):
+    """
+    This class is a subclass of `QWidget` which opens a widget used to create transforms
+
+    :param parent: The parent widget
+    :type parent: QWidget
+    """
 
     tfCreated = pyqtSignal()
 
@@ -473,6 +586,14 @@ class CreateWidget(QWidget):
 
     @staticmethod
     def _restrict_num_fields(line_edits):
+        """
+        This function specifically disables QLineEdit widgets of a parent widget when the required number of
+        field have been assigned
+
+        :param line_edits: A list of QLineEdit widgets
+        :type line_edits: list
+        """
+
         count = len(line_edits) - 1
 
         for le in line_edits:
@@ -488,12 +609,21 @@ class CreateWidget(QWidget):
                 le.setEnabled(True)
 
     def _on_add_scatter_point(self):
+        """
+        This callback function updates the scatterListView model when a new entry is
+        entered and added (i.e. a new position)
+        """
+
         point = [float(self.pointXText.text()), float(self.pointYText.text()), float(self.pointZText.text())]
 
         item = QStandardItem(str(point))
         self.scatter_model.appendRow(item)
 
     def _on_remove_scatter_point(self):
+        """
+        This callback function updates the scatterListView model when an item is removed
+        """
+
         index = self.scatterListView.selectionModel().currentIndex()
         cur_selection = self.scatter_model.itemFromIndex(index)
 
@@ -503,6 +633,11 @@ class CreateWidget(QWidget):
         self.scatter_model.removeRow(cur_selection.row())
 
     def _on_type_index_changed(self):
+        """
+        This callback function administers the opening and closing of the appropriate widgets
+        when a type (i.e. transform or pattern) is chosen in the typeBox dropdown widget
+        """
+
         self.patternWidget.close()
 
         if self.typeBox.currentText() == 'Pattern':
@@ -512,6 +647,11 @@ class CreateWidget(QWidget):
             return
 
     def _on_pattern_index_changed(self):
+        """
+        This callback function administers the opening and closing of the appropriate widgets
+        when a pattern (e.g. linear, rectangular) is chosen in the patternBox dropdown widget
+        """
+
         wdgs = [
             self.linearWidget,
             self.rectangularWidget,
@@ -531,7 +671,48 @@ class CreateWidget(QWidget):
         elif self.patternBox.currentText() == 'Scatter':
             self.scatterWidget.show()
 
+    def _get_transform_pose(self):
+        """
+        This function retrieves the pose information of root transform from the transformWidget widget,
+        handles empty entries, and casts the data to the appropriate data type
+
+        :return: The position and orientation of the root transform
+        :rtype: tuple
+        """
+
+        in_ = [
+            self.xText,
+            self.yText,
+            self.zText,
+            self.qxText,
+            self.qyText,
+            self.qzText,
+            self.qwText
+        ]
+
+        for le in in_:
+            self._handle_empty_line(le)
+
+        xyz = [
+            float(self.xText.text()),
+            float(self.yText.text()),
+            float(self.zText.text())
+        ]
+
+        q = [
+            float(self.qxText.text()),
+            float(self.qyText.text()),
+            float(self.qzText.text()),
+            float(self.qwText.text())
+        ]
+
+        return xyz, q
+
     def _on_accepted(self):
+        """
+        This callback function handles the creation of the requested transforms when 'OK' (accepted)
+        is selected in the dialogButton widget
+        """
 
         empty = self.check_required_field_empty(self.nameText)
         empty = self.check_required_field_empty(self.referenceText) or empty
@@ -539,44 +720,28 @@ class CreateWidget(QWidget):
         if empty:
             return
 
+        tf_pose = self._get_transform_pose()
+
         if self.typeBox.currentText() == 'Transform':
-            in_ = [
-                self.xText,
-                self.yText,
-                self.zText,
-                self.qxText,
-                self.qyText,
-                self.qzText,
-                self.qwText
-            ]
-
-            for le in in_:
-                self._handle_empty_line(le)
-
-            xyz = [
-                float(self.xText.text()),
-                float(self.yText.text()),
-                float(self.zText.text())
-            ]
-
-            q = [
-                float(self.qxText.text()),
-                float(self.qyText.text()),
-                float(self.qzText.text()),
-                float(self.qwText.text())
-            ]
-
-            pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text(), xyz, q)
+            pmc.create_transform(self.nameText.text(),
+                                 self.parent.data()['id'],
+                                 self.referenceText.text(),
+                                 tf_pose[0],
+                                 tf_pose[1])
         elif self.typeBox.currentText() == 'Pattern':
-            for le in self.patternWidget.findChildren(QLineEdit):
-                le.setEnabled(True)
-
-            self._create_pattern(self.patternBox.currentText())
+            self._create_pattern(self.patternBox.currentText(),
+                                 tf_pose[0],
+                                 tf_pose[1])
 
         self.tfCreated.emit()
         self._on_rejected()
 
     def _on_rejected(self):
+        """
+        This callback function handles the resetting of widget and closing of the widget when 'Cancel' (rejected)
+        is selected in the dialogButton widget
+        """
+
         wgds = self.findChildren(QLineEdit)
         wgds.extend(self.findChildren(QComboBox))
 
@@ -588,38 +753,27 @@ class CreateWidget(QWidget):
 
         self.close()
 
-    def _create_pattern(self, type_):
-        in_ = [
-            str(self.nameText.text()),
-            self.parent.data()['id'],
-            [
-                self.xText,
-                self.yText,
-                self.zText,
-                self.qxText,
-                self.qyText,
-                self.qzText,
-                self.qwText
-            ]
-        ]
+    def _create_pattern(self, type_, xyz, q):
+        """
+        This function calls the appropriate function, responsible for the creation of a transform pattern,
+        from the supplied type
 
-        for le in in_[2]:
-            self._handle_empty_line(le)
+        :param type_: The type of pattern to be created
+        :type type_: str
+        :param xyz: The position of the root transform (parent)
+        :type xyz: list
+        :param q: The orientation of the root transform (parent)
+        :type q: list
+        """
+
+        for le in self.patternWidget.findChildren(QLineEdit):
+            le.setEnabled(True)
 
         args = [
-            in_[0],
-            in_[1],
-            [
-                float(in_[2][0].text()),
-                float(in_[2][1].text()),
-                float(in_[2][2].text())
-            ],
-            [
-                float(in_[2][3].text()),
-                float(in_[2][4].text()),
-                float(in_[2][5].text()),
-                float(in_[2][6].text())
-            ]
+            str(self.nameText.text()),
+            self.parent.data()['id'],
+            xyz,
+            q
         ]
 
         if type_ == 'Linear':
@@ -634,6 +788,13 @@ class CreateWidget(QWidget):
             raise ValueError('Pattern type is not implemented')
 
     def _create_linear_pattern(self, args):
+        """
+        This function creates a linear pattern of transforms under the parent transform
+
+        :param args: data about the parent transform
+        :type args: list
+        """
+
         in_ = [
             self.numPointsText,
             self.stepSizeText,
@@ -648,6 +809,13 @@ class CreateWidget(QWidget):
         pmc.create_linear_pattern(*args)
 
     def _create_rectangular_pattern(self, args):
+        """
+        This function creates a rectangular pattern of transforms under the parent transform
+
+        :param args: data about the parent transform
+        :type args: list
+        """
+
         in_ = [
             self.numPointsXText,
             self.numPointsYText,
@@ -669,6 +837,13 @@ class CreateWidget(QWidget):
         pmc.create_rectangular_pattern(*args)
 
     def _create_circular_pattern(self, args):
+        """
+        This function creates a circular pattern of transforms under the parent transform
+
+        :param args: data about the parent transform
+        :type args: list
+        """
+
         in_ = [
             self.numPointsText2,
             self.radiusText,
@@ -689,6 +864,13 @@ class CreateWidget(QWidget):
         pmc.create_circular_pattern(*args)
 
     def _create_scatter_pattern(self, args):
+        """
+        This function creates a scatter pattern of transforms under the parent transform
+
+        :param args: data about the parent transform
+        :type args: list
+        """
+
         points = []
         for i in range(self.scatter_model.rowCount()):
             str_point_lst = list_string_to_list(str(self.scatter_model.item(i).text()))
@@ -704,6 +886,13 @@ class CreateWidget(QWidget):
 
     @staticmethod
     def _handle_empty_line(line_edit):
+        """
+        This function checks if a field has been left empty, and if so, assigns it its default value
+
+        :param line_edit: The input field for parameters
+        :type line_edit: QLineEdit
+        """
+
         if line_edit.text():
             return
 
@@ -711,6 +900,15 @@ class CreateWidget(QWidget):
 
     @staticmethod
     def check_required_field_empty(field):
+        """
+        This function checks if a required field has been left empty, and if so,
+        highlights the field with a red triangle
+
+        :param field: The input field to check
+        :type field: QLineEdit
+        :return: `True` if field is empty, otherwise `False`
+        :rtype: bool
+        """
 
         if len(field.text()) == 0:
             field.setStyleSheet("border: 2px solid red;")
