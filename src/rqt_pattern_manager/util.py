@@ -71,14 +71,17 @@ def list_string_to_list(str_):
     return str_point.split(',')
 
 
-def make_pattern_parent_msg(name, id_, translation, rotation):
-    pparent = pm_msg.Params()
-    pparent.name = name
-    pparent.parent_id = id_
-    pparent.translation = list_to_vector3(translation)
-    pparent.rotation = list_to_quaternion(rotation)
+def make_pattern_params_msg(name, id_, translation, rotation, ref_frame=None):
+    params = pm_msg.Params()
+    params.name = name
+    params.parent_id = id_
+    params.translation = list_to_vector3(translation)
+    params.rotation = list_to_quaternion(rotation)
 
-    return pparent
+    if ref_frame:
+        params.ref_frame = ref_frame
+
+    return params
 
 
 def get_current_selection(view):

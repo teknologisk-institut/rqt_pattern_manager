@@ -18,6 +18,7 @@
 
 import pattern_manager_client as pmc
 import resources
+import rospy
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -32,33 +33,11 @@ from PyQt5.QtWidgets import \
     QTableView, \
     QSpacerItem, \
     QProxyStyle, \
-    QFileDialog, \
-    QDialog
+    QFileDialog
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen
 from PyQt5.QtCore import pyqtSignal, Qt
 from .util import *
 from collections import OrderedDict
-
-
-class CustomDialog(QDialog):
-
-    def __init__(self, parent, root_id):
-        super(CustomDialog, self).__init__(parent)
-
-        load_ui('dialog.ui', self)
-        self.setObjectName('DialogWidget')
-
-        self.root_id = root_id
-
-        self.accepted.connect(self._on_accepted)
-        self.rejected.connect(self._on_rejected)
-
-    def _on_accepted(self):
-
-        self.close()
-
-    def _on_rejected(self):
-        self.close()
 
 
 class CustomTreeItemModel(QStandardItemModel):
@@ -300,7 +279,7 @@ class CustomTableView(QTableView):
 
             table_dict[str(item_header)] = str(item.text())
 
-        pmc.update_transform_var(**table_dict)
+        pmc.update_transform(**table_dict)
 
         self.updated.emit()
 
@@ -457,7 +436,7 @@ class CreateWidget(QWidget):
         self.parent = parent
         self.type_ = None
 
-        load_ui('create.ui', self)
+        load_ui('create_widget.ui', self)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
 
@@ -561,7 +540,33 @@ class CreateWidget(QWidget):
             return
 
         if self.typeBox.currentText() == 'Transform':
-            pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text())
+            in_ = [
+                self.xText,
+                self.yText,
+                self.zText,
+                self.qxText,
+                self.qyText,
+                self.qzText,
+                self.qwText
+            ]
+
+            for le in in_:
+                self._handle_empty_line(le)
+
+            xyz = [
+                float(self.xText.text()),
+                float(self.yText.text()),
+                float(self.zText.text())
+            ]
+
+            q = [
+                float(self.qxText.text()),
+                float(self.qyText.text()),
+                float(self.qzText.text()),
+                float(self.qwText.text())
+            ]
+
+            pmc.create_transform(self.nameText.text(), self.parent.data()['id'], self.referenceText.text(), xyz, q)
         elif self.typeBox.currentText() == 'Pattern':
             for le in self.patternWidget.findChildren(QLineEdit):
                 le.setEnabled(True)
