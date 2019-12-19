@@ -775,7 +775,7 @@ QMenu::item:selected {
          </font>
         </property>
         <property name="text">
-         <string>Version: 2.0.0.0.0.0.0.0.0.01a</string>
+         <string/>
         </property>
         <property name="textFormat">
          <enum>Qt::AutoText</enum>
