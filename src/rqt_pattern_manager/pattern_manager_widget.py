@@ -125,9 +125,6 @@ class CustomTreeItemModel(QStandardItemModel):
         :rtype: bool
         """
 
-        # if row < 0:
-        #     return False
-
         parent_item = self.itemFromIndex(parent)
 
         bytearray_ = data.data('application/x-qabstractitemmodeldatalist')
