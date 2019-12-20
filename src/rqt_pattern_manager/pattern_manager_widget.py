@@ -19,6 +19,7 @@
 import pattern_manager_client as pmc
 import resources
 import rospy
+import pickle
 
 from PyQt5.QtWidgets import \
     QWidget, \
@@ -35,7 +36,7 @@ from PyQt5.QtWidgets import \
     QProxyStyle, \
     QFileDialog
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor, QPen
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QVariant, QDataStream, QIODevice, QSize
 from .util import *
 from collections import OrderedDict
 
@@ -61,19 +62,18 @@ class CustomTreeItemModel(QStandardItemModel):
 
         ids = pmc.get_transform_ids()
 
-        # create nodes from ids
         nodes = []
         for i in ids:
             node = pmc.get_transform(i)
             nodes.append(node)
 
-        # create items from nodes
         items = {}
         for n in nodes:
             item = QStandardItem('%s [tf_%s]' % (n.name, n.number))
             params = {
                 'name': n.name,
                 'id': n.id,
+                'parent_id': n.parent_id,
                 'ref_frame': n.ref_frame,
                 'active': n.active,
                 'translation': [
@@ -95,7 +95,6 @@ class CustomTreeItemModel(QStandardItemModel):
 
             items[n.id] = item
 
-        # assign ancestry of items
         for n in nodes:
             item = items[n.id]
             par_item = items[n.parent_id]
@@ -126,20 +125,40 @@ class CustomTreeItemModel(QStandardItemModel):
         :rtype: bool
         """
 
-        success = super(CustomTreeItemModel, self).dropMimeData(data, action, row, column, parent)
+        # if row < 0:
+        #     return False
 
         parent_item = self.itemFromIndex(parent)
 
+        bytearray_ = data.data('application/x-qabstractitemmodeldatalist')
+        data_items = decode_mime_data(bytearray_)
+        item_name = data_items[0][Qt.DisplayRole].value()
+        item = self.findItems(item_name, Qt.MatchRecursive | Qt.MatchExactly)[0]
+
+        if row > 0 and item.data()['parent_id'] != parent_item.data()['id']:
+            return False
+
+        super(CustomTreeItemModel, self).dropMimeData(data, action, row, column, parent)
+
         if row < 0:
-            row = parent_item.rowCount() - 1
+            pmc.set_transform_parent(item.data()['id'], parent_item.data()['id'])
 
-        item = parent_item.child(row)
-        pmc.set_transform_parent(item.data()['id'], parent_item.data()['id'])
+            return True
 
-        order = get_child_ids(parent_item)
-        pmc.set_iteration_order(parent_item.data()['id'], order)
+        ids = []
+        for i in range(parent_item.rowCount()):
+            child = parent_item.child(i)
+            id_ = child.data()['id']
 
-        return success
+            if id_ == item.data()['id'] and i != row:
+                continue
+
+            ids.append(id_)
+
+        if len(ids) > 1:
+            pmc.set_iteration_order(parent_item.data()['id'], ids)
+
+        return True
 
     @staticmethod
     def _set_item_font(item):

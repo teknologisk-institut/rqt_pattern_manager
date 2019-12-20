@@ -18,11 +18,13 @@
 
 import os
 import rospkg
+import rospy
 import geometry_msgs.msg as gm_msg
 import pattern_manager.msg as pm_msg
 import string
 
 from PyQt5.uic import loadUi
+from PyQt5.QtCore import Qt, QVariant, QDataStream
 
 
 def load_ui(file_, widget):
@@ -189,6 +191,32 @@ def get_child_ids(parent):
         child = parent.child(i)
         id_ = child.data()['id']
 
+        rospy.logwarn(child.text())
+
         ids.append(id_)
 
     return ids
+
+
+def decode_mime_data(bytearray_):
+
+    data = []
+    item = {}
+
+    ds = QDataStream(bytearray_)
+    while not ds.atEnd():
+
+        row = ds.readInt32()
+        column = ds.readInt32()
+
+        map_items = ds.readInt32()
+        for i in range(map_items):
+            key = ds.readInt32()
+
+            value = QVariant()
+            ds >> value
+            item[Qt.ItemDataRole(key)] = value
+
+        data.append(item)
+
+    return data
