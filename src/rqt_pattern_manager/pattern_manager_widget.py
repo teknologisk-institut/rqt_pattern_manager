@@ -630,7 +630,16 @@ class CreateWidget(QWidget):
         entered and added (i.e. a new position)
         """
 
-        point = [float(self.pointXText.text()), float(self.pointYText.text()), float(self.pointZText.text())]
+        in_ = [
+            self.pointXText,
+            self.pointYText,
+            self.pointZText
+        ]
+
+        for le in in_:
+            self._handle_empty_line(le)
+
+        point = [float(in_[0].text()), float(in_[1].text()), float(in_[2].text())]
 
         item = QStandardItem(str(point))
         self.scatter_model.appendRow(item)
@@ -710,16 +719,16 @@ class CreateWidget(QWidget):
             self._handle_empty_line(le)
 
         xyz = [
-            float(self.xText.text()),
-            float(self.yText.text()),
-            float(self.zText.text())
+            float(in_[0].text()),
+            float(in_[1].text()),
+            float(in_[2].text())
         ]
 
         q = [
-            float(self.qxText.text()),
-            float(self.qyText.text()),
-            float(self.qzText.text()),
-            float(self.qwText.text())
+            float(in_[3].text()),
+            float(in_[4].text()),
+            float(in_[5].text()),
+            float(in_[6].text())
         ]
 
         return xyz, q

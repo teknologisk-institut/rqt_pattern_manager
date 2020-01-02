@@ -21,8 +21,8 @@ import pattern_manager.srv as pm_srv
 import std_srvs.srv as std_srv
 import geometry_msgs.msg as gm_msg
 import ast
-
-from .util import make_pattern_params_msg
+import rqt_pattern_manager.util as util
+import pattern_manager.msg as pm_msg
 
 
 def load(filename):
@@ -85,7 +85,7 @@ def create_linear_pattern(name, parent_id, translation, rotation, num_points, st
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_linear_pattern', pm_srv.CreateLinearPattern)
 
-        pparent = make_pattern_params_msg(name, parent_id, translation, rotation)
+        pparent = util.make_pattern_params_msg(name, parent_id, translation, rotation)
         resp = crt_pat(pparent, num_points, step_size, length)
 
         return resp.success
@@ -98,7 +98,7 @@ def create_rectangular_pattern(name, parent_id, translation, rotation, num_point
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_rectangular_pattern', pm_srv.CreateRectangularPattern)
 
-        pparent = make_pattern_params_msg(name, parent_id, translation, rotation)
+        pparent = util.make_pattern_params_msg(name, parent_id, translation, rotation)
         resp = crt_pat(pparent, num_points, step_size, length)
 
         return resp.success
@@ -111,7 +111,7 @@ def create_scatter_pattern(name, parent_id, translation, rotation, points):
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_scatter_pattern', pm_srv.CreateScatterPattern)
 
-        pparent = make_pattern_params_msg(name, parent_id, translation, rotation)
+        pparent = util.make_pattern_params_msg(name, parent_id, translation, rotation)
         resp = crt_pat(pparent, points)
 
         return resp.success
@@ -124,7 +124,7 @@ def create_circular_pattern(name, parent_id, translation, rotation, num_points, 
     try:
         crt_pat = rospy.ServiceProxy('pattern_manager/create_circular_pattern', pm_srv.CreateCircularPattern)
 
-        pparent = make_pattern_params_msg(name, parent_id, translation, rotation)
+        pparent = util.make_pattern_params_msg(name, parent_id, translation, rotation)
         resp = crt_pat(pparent, num_points, r, tan_rot, cw, angular_section)
 
         return resp.success
@@ -203,7 +203,12 @@ def create_transform(name, parent_id, ref_frame, translation, rotation):
     try:
         crt_tf = rospy.ServiceProxy('pattern_manager/create_transform', pm_srv.CreateTransform)
 
-        params = make_pattern_params_msg(name, parent_id, translation, rotation, ref_frame)
+        params = pm_msg.CreationParams()
+        params.name = name
+        params.parent_id = parent_id
+        params.translation = util.list_to_vector3(translation)
+        params.rotation = util.list_to_quaternion(rotation)
+
         resp = crt_tf(params)
 
         return resp.success
