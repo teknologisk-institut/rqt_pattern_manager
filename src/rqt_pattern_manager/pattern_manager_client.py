@@ -58,13 +58,13 @@ def set_transform_parent(id_, parent_id):
         print 'Service call failed: %s' % e
 
 
-def get_transform_ids():
-    rospy.wait_for_service('pattern_manager/get_transform_ids', 20)
+def get_transforms():
+    rospy.wait_for_service('pattern_manager/get_transforms', 20)
     try:
-        get_ids = rospy.ServiceProxy('pattern_manager/get_transform_ids', pm_srv.GetIds)
-        resp = get_ids()
+        get_tfs = rospy.ServiceProxy('pattern_manager/get_transforms', pm_srv.GetIds)
+        resp = get_tfs()
 
-        return resp.ids
+        return resp.names_and_ids
     except rospy.ServiceException, e:
         print 'Service call failed: %s' % e
 
@@ -132,22 +132,22 @@ def create_circular_pattern(name, parent_id, translation, rotation, num_points, 
         print 'Service call failed: %s' % e
 
 
-def get_active_ids():
-    rospy.wait_for_service('pattern_manager/get_active_ids', 20)
+def get_active_transforms():
+    rospy.wait_for_service('pattern_manager/get_active_transforms', 20)
     try:
-        actv_ids = rospy.ServiceProxy('pattern_manager/get_active_ids', pm_srv.GetIds)
-        resp = actv_ids()
+        actv_tfs = rospy.ServiceProxy('pattern_manager/get_active_transforms', pm_srv.GetIds)
+        resp = actv_tfs()
 
-        return resp.ids
+        return resp.names_and_ids
     except rospy.ServiceException, e:
         print 'Service call failed: %s' % e
 
 
-def get_current_tf_id():
-    rospy.wait_for_service('pattern_manager/get_current_transform_id', 20)
+def get_current_tf():
+    rospy.wait_for_service('pattern_manager/get_current_transform', 20)
     try:
-        cur_tf_id = rospy.ServiceProxy('pattern_manager/get_current_transform_id', pm_srv.GetCurrentId)
-        resp = cur_tf_id()
+        cur_tf = rospy.ServiceProxy('pattern_manager/get_current_transform', pm_srv.GetCurrentId)
+        resp = cur_tf()
 
         return resp.id
     except rospy.ServiceException, e:
@@ -188,9 +188,9 @@ def update_transform(id_, name, ref_frame, active, translation, rotation):
 
 
 def get_transform(id_):
-    rospy.wait_for_service('pattern_manager/get_transform', 20)
+    rospy.wait_for_service('pattern_manager/get_transform_info', 20)
     try:
-        get_tf = rospy.ServiceProxy('pattern_manager/get_transform', pm_srv.GetTransformParams)
+        get_tf = rospy.ServiceProxy('pattern_manager/get_transform_info', pm_srv.GetTransformParams)
         resp = get_tf(id_)
 
         return resp.params

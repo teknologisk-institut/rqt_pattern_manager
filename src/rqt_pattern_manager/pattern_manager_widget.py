@@ -60,11 +60,11 @@ class CustomTreeItemModel(QStandardItemModel):
 
         self.clear()
 
-        ids = pmc.get_transform_ids()
+        names_and_ids = pmc.get_transforms()
 
         nodes = []
-        for i in ids:
-            node = pmc.get_transform(i)
+        for i in names_and_ids:
+            node = pmc.get_transform(i.id)
             nodes.append(node)
 
         items = {}
@@ -166,7 +166,7 @@ class CustomTreeItemModel(QStandardItemModel):
         :type item: QStandardItem
         """
 
-        cur_tf_id = pmc.get_current_tf_id()
+        cur_tf_id = pmc.get_current_tf()
         f = item.font()
 
         if cur_tf_id == item.data()['id']:
@@ -438,7 +438,7 @@ class MainWidget(QWidget):
         self.saveButton.clicked.connect(self._save_tree)
         self.loadButton.clicked.connect(self._load_tree)
 
-        self.init_cnt_actv = len(pmc.get_active_ids())
+        self.init_cnt_actv = len(pmc.get_active_transforms())
         if self.init_cnt_actv > 0:
             self.progressBar.setValue(100)
 
@@ -480,10 +480,10 @@ class MainWidget(QWidget):
         This callback function deactivates all currently active transforms and resets the progress bar
         """
 
-        actv_ids = pmc.get_active_ids()
+        actv_tfs = pmc.get_active_transforms()
 
-        for id_ in actv_ids:
-            pmc.set_active(id_, False)
+        for i in actv_tfs:
+            pmc.set_active(i.id, False)
 
         self.progressBar.setValue(0)
         self.tree_view.model().update()
@@ -493,7 +493,7 @@ class MainWidget(QWidget):
         This callback function iterates the active transforms and updates the progress bar
         """
 
-        cnt_actv = len(pmc.get_active_ids())
+        cnt_actv = len(pmc.get_active_transforms())
 
         if cnt_actv == 0:
             return
@@ -532,14 +532,14 @@ class MainWidget(QWidget):
         elif action == "activate_item":
             pmc.set_active(item.data()['id'], True)
 
-            self.init_cnt_actv = len(pmc.get_active_ids())
+            self.init_cnt_actv = len(pmc.get_active_transforms())
 
             if self.init_cnt_actv > 0:
                 self.progressBar.setValue(100)
         elif action == "deactivate_item":
             pmc.set_active(item.data()['id'], False)
 
-            self.init_cnt_actv = len(pmc.get_active_ids())
+            self.init_cnt_actv = len(pmc.get_active_transforms())
             if self.init_cnt_actv == 0:
                 self.progressBar.setValue(0)
         else:
